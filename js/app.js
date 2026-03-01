@@ -1,9 +1,19 @@
-document.addEventListener('DOMContentLoaded', () => {
-  // 1. Initial Render
-  renderFeaturedCars();
-  handleRouting();
+let currentFleet = [];
 
-  // 2. Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Listen to Fleet changes in real-time
+  db.ref('maycar_fleet').on('value', (snapshot) => {
+    const data = snapshot.val();
+    currentFleet = data ? Object.values(data) : [];
+    renderFeaturedCars();
+    renderFleetGrid();
+  });
+
+  handleRouting();
+  updateAuthUI();
+  initFleetFilters();
+
+  // 2. Global Event Listeners
   window.addEventListener('hashchange', handleRouting);
   window.addEventListener('scroll', handleScroll);
 });
@@ -46,15 +56,8 @@ function renderFeaturedCars() {
   const grid = document.getElementById('featured-cars-grid');
   if (!grid) return;
 
-  // Use localStorage data if available (sync with Admin)
-  let currentCarsData = [...carsData];
-  const storedCars = localStorage.getItem('maycar_fleet');
-  if (storedCars) {
-    currentCarsData = JSON.parse(storedCars);
-  }
-
   // Take the first 3 cars as featured
-  const featuredCars = currentCarsData.slice(0, 3);
+  const featuredCars = currentFleet.slice(0, 3);
 
   grid.innerHTML = featuredCars.map(car => createVehicleCardHTML(car)).join('');
 }
@@ -91,14 +94,8 @@ window.startBooking = function (carId) {
     return;
   }
 
-  // Find car data (from local storage or default data)
-  let currentCarsData = [...carsData];
-  const storedCars = localStorage.getItem('maycar_fleet');
-  if (storedCars) {
-    currentCarsData = JSON.parse(storedCars);
-  }
-
-  const car = currentCarsData.find(c => c.id === carId);
+  // Find car data from current fleet
+  const car = currentFleet.find(c => c.id === carId);
   if (!car) return;
 
   // Reset Modal State
@@ -204,19 +201,20 @@ window.calculateBookingTotal = function () {
 window.goToPaymentStep = function (e) {
   e.preventDefault();
 
-  // Load payment settings from admin
-  const settingsStr = localStorage.getItem('maycar_payment_settings');
-  if (settingsStr) {
-    const settings = JSON.parse(settingsStr);
-    document.getElementById('qr-payment-img').src = settings.qrUrl || '';
-    document.getElementById('bank-acc-info').innerHTML = `
-            <strong>${settings.bankName || ''}</strong><br>
-            ชื่อบัญชี: ${settings.accountName || ''}<br>
-            เลขที่: ${settings.accountNumber || ''}
-        `;
-  } else {
-    document.getElementById('bank-acc-info').innerHTML = 'ไม่พบข้อมูลบัญชี กรุณาติดต่อแอดมิน';
-  }
+  // Load payment settings from Firebase
+  db.ref('maycar_payment_settings').once('value').then((snapshot) => {
+    const settings = snapshot.val();
+    if (settings) {
+      document.getElementById('qr-payment-img').src = settings.qrUrl || '';
+      document.getElementById('bank-acc-info').innerHTML = `
+                <strong>${settings.bankName || ''}</strong><br>
+                ชื่อบัญชี: ${settings.accountName || ''}<br>
+                เลขที่: ${settings.accountNumber || ''}
+            `;
+    } else {
+      document.getElementById('bank-acc-info').innerHTML = 'ไม่พบข้อมูลบัญชี กรุณาติดต่อแอดมิน';
+    }
+  });
 
   const step1 = document.getElementById('booking-step-1');
   if (step1) step1.style.display = 'none';
@@ -259,7 +257,7 @@ window.confirmPayment = function (e) {
   const slipFile = document.getElementById('b-slip').files[0];
 
   const proceedWithBooking = (slipDataUrl) => {
-    // 1. Create Notification for Admin
+    // 1. Create Notification for Admin (Firebase)
     const newNotif = {
       id: 'n' + Date.now(),
       title: 'มีการจองและชำระเงินใหม่',
@@ -268,12 +266,9 @@ window.confirmPayment = function (e) {
       isRead: false
     };
 
-    const storedNotifs = JSON.parse(localStorage.getItem('maycar_notifications') || '[]');
-    storedNotifs.unshift(newNotif);
-    localStorage.setItem('maycar_notifications', JSON.stringify(storedNotifs));
+    db.ref('maycar_notifications').child(newNotif.id).set(newNotif);
 
-    // 2. Save Booking for User Dashboard
-    // Define variables in scope for proceedWithBooking
+    // 2. Save Booking for User Dashboard (Firebase)
     const bPickup = document.getElementById('b-pickup').value;
     const bReturn = document.getElementById('b-return').value;
     const carImg = document.getElementById('booking-car-img').src;
@@ -307,37 +302,27 @@ window.confirmPayment = function (e) {
       bookingDate: new Date().toISOString()
     };
 
-    const userBookings = JSON.parse(localStorage.getItem('maycar_my_bookings') || '[]');
-    userBookings.unshift(newBooking);
-    localStorage.setItem('maycar_my_bookings', JSON.stringify(userBookings));
+    // Save to Firebase
+    db.ref('maycar_bookings').child(newBooking.id).set(newBooking).then(() => {
+      // 3. Send LINE Messaging API (Flex Message) using settings from Firebase
+      db.ref('maycar_payment_settings').once('value').then((snapshot) => {
+        const settings = snapshot.val();
+        if (settings && settings.lineAccessToken && settings.lineUserId) {
+          const flexData = {
+            ...newBooking,
+            rentalDays: rentalDaysLabel,
+            total: total
+          };
+          sendLineFlexMessage(flexData, settings.lineAccessToken, settings.lineUserId);
+        }
+      });
 
-    // 3. Send LINE Messaging API (Flex Message)
-    const paymentSettings = JSON.parse(localStorage.getItem('maycar_payment_settings') || '{}');
-    if (paymentSettings.lineAccessToken && paymentSettings.lineUserId) {
-      const flexData = {
-        carName: carName,
-        customerName: fullName,
-        customerEmail: email,
-        customerPhone: phone,
-        customerIdCard: idCard,
-        customerPermAddr: permAddr,
-        deliveryAddr: deliveryAddr,
-        mapLink: mapLink,
-        rentalDays: rentalDaysLabel,
-        total: total,
-        bPickup: bPickup,
-        bReturn: bReturn,
-        carImage: carImg,
-        bookingId: newBooking.id
-      };
-      sendLineFlexMessage(flexData, paymentSettings.lineAccessToken, paymentSettings.lineUserId);
-    }
-
-    // Show Success Step
-    document.getElementById('booking-modal-title').style.display = 'none';
-    document.getElementById('booking-steps').style.display = 'none';
-    document.getElementById('booking-step-2').style.display = 'none';
-    document.getElementById('booking-step-3').style.display = 'block';
+      // Show Success Step
+      document.getElementById('booking-modal-title').style.display = 'none';
+      document.getElementById('booking-steps').style.display = 'none';
+      document.getElementById('booking-step-2').style.display = 'none';
+      document.getElementById('booking-step-3').style.display = 'block';
+    });
   };
 
   if (slipFile) {
@@ -437,12 +422,7 @@ function updateAuthUI() {
   }
 }
 
-// Call initially
-document.addEventListener('DOMContentLoaded', () => {
-  updateAuthUI();
-  initFleetFilters();
-  renderFleetGrid();
-});
+// Initialization of UI happens in the main DOMContentLoaded listener at top
 
 // ============================================
 // Fleet Selection Logic
@@ -504,17 +484,10 @@ function renderFleetGrid() {
   const countDisplay = document.getElementById('fleet-count');
   if (!grid) return;
 
-  // Use admin sync data if available
-  let currentCarsData = [...carsData];
-  const storedCars = localStorage.getItem('maycar_fleet');
-  if (storedCars) {
-    currentCarsData = JSON.parse(storedCars);
-  }
-
-  // Filter logic
+  // Filter logic using currentFleet from Firebase
   const filteredCars = currentCategory === 'all'
-    ? currentCarsData
-    : currentCarsData.filter(car => car.category === currentCategory);
+    ? currentFleet
+    : currentFleet.filter(car => car.category === currentCategory);
 
   // Update Count
   if (countDisplay) {
@@ -575,42 +548,46 @@ window.renderDashboard = function () {
 
   const bookingsList = document.getElementById('user-bookings-list');
   const emptyState = document.getElementById('empty-bookings');
+  const userEmail = localStorage.getItem('userName');
 
-  let bookings = JSON.parse(localStorage.getItem('maycar_my_bookings') || '[]');
+  // Listen to bookings in real-time or just once? Let's use real-time for dashboard
+  db.ref('maycar_bookings').on('value', (snapshot) => {
+    const allBookings = snapshot.val() ? Object.values(snapshot.val()) : [];
+    let bookings = allBookings.filter(b => b.customerEmail === userEmail);
 
-  // Apply filtering
-  if (currentDashboardFilter === 'pending') {
-    bookings = bookings.filter(b => b.status === 'รอยืนยัน' || b.status === 'ยืนยันแล้ว' || b.status === 'กำลังใช้งาน');
-  } else if (currentDashboardFilter === 'history') {
-    bookings = bookings.filter(b => b.status === 'เสร็จสิ้น' || b.status === 'ยกเลิก');
-  }
+    // Apply filtering
+    if (currentDashboardFilter === 'pending') {
+      bookings = bookings.filter(b => b.status === 'รอยืนยัน' || b.status === 'ยืนยันแล้ว' || b.status === 'กำลังใช้งาน');
+    } else if (currentDashboardFilter === 'history') {
+      bookings = bookings.filter(b => b.status === 'เสร็จสิ้น' || b.status === 'ยกเลิก');
+    }
 
-  if (bookings.length === 0) {
-    emptyState.style.display = 'block';
-    // Clear any existing booking cards except the empty state
-    Array.from(bookingsList.children).forEach(child => {
-      if (child.id !== 'empty-bookings') child.remove();
-    });
-  } else {
-    emptyState.style.display = 'none';
+    if (bookings.length === 0) {
+      emptyState.style.display = 'block';
+      // Clear any existing booking cards except the empty state
+      Array.from(bookingsList.children).forEach(child => {
+        if (child.id !== 'empty-bookings') child.remove();
+      });
+    } else {
+      emptyState.style.display = 'none';
 
-    const formatDisplayDate = (dateStr) => {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    };
+      const formatDisplayDate = (dateStr) => {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      };
 
-    const getStatusColor = (status) => {
-      switch (status) {
-        case 'รอยืนยัน': return '#f59e0b'; // Amber
-        case 'ยืนยันแล้ว': return '#10b981'; // Green
-        case 'กำลังใช้งาน': return '#3b82f6'; // Blue
-        case 'เสร็จสิ้น': return '#6b7280'; // Gray
-        case 'ยกเลิก': return '#ef4444'; // Red
-        default: return '#6b7280';
-      }
-    };
+      const getStatusColor = (status) => {
+        switch (status) {
+          case 'รอยืนยัน': return '#f59e0b'; // Amber
+          case 'ยืนยันแล้ว': return '#10b981'; // Green
+          case 'กำลังใช้งาน': return '#3b82f6'; // Blue
+          case 'เสร็จสิ้น': return '#6b7280'; // Gray
+          case 'ยกเลิก': return '#ef4444'; // Red
+          default: return '#6b7280';
+        }
+      };
 
-    const bookingsHTML = bookings.map(b => `
+      const bookingsHTML = bookings.map(b => `
             <div class="dashboard-card">
                 <div class="card-img-wrapper">
                     <img src="${b.carImage}" alt="${b.carName}">
@@ -636,14 +613,15 @@ window.renderDashboard = function () {
             </div>
         `).join('');
 
-    // Remove old cards
-    Array.from(bookingsList.children).forEach(child => {
-      if (child.id !== 'empty-bookings') child.remove();
-    });
+      // Remove old cards
+      Array.from(bookingsList.children).forEach(child => {
+        if (child.id !== 'empty-bookings') child.remove();
+      });
 
-    // Insert new cards
-    bookingsList.insertAdjacentHTML('afterbegin', bookingsHTML);
-  }
+      // Insert new cards
+      bookingsList.insertAdjacentHTML('afterbegin', bookingsHTML);
+    }
+  });
 };
 
 // Update handleRouting to trigger Dashboard render
@@ -820,7 +798,7 @@ async function sendLineFlexMessage(data, token, userId) {
   };
 
   try {
-    await fetch(proxyUrl + encodeURIComponent(apiUrl), {
+    const response = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -835,7 +813,16 @@ async function sendLineFlexMessage(data, token, userId) {
         }]
       })
     });
+
+    if (response.ok) {
+      return { success: true };
+    } else {
+      const errData = await response.json();
+      console.error('LINE Messaging API Error:', errData);
+      return { success: false, error: errData.message || JSON.stringify(errData) };
+    }
   } catch (error) {
-    console.error('LINE Messaging API Error:', error);
+    console.error('Fetch Error:', error);
+    return { success: false, error: 'เกิดข้อผิดพลาดในการเชื่อมต่อ (Network/Proxy Error): ' + error.message };
   }
 }

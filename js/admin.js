@@ -57,37 +57,81 @@ function switchAdminView(viewId, clickedElement) {
     }
 }
 
-// Data Initialization / localStorage Sync
+// Data Initialization / Firebase Sync
 let adminCarsData = [];
 
 function initAdminData() {
-    // Sync with global carsData from data.js or localStorage
-    const storedCars = localStorage.getItem('maycar_fleet');
-    if (storedCars) {
-        adminCarsData = JSON.parse(storedCars);
-    } else {
-        adminCarsData = [...carsData]; // From data.js
-        saveCarsToStorage();
-    }
-    renderAdminCarsTable();
-    renderAdminBookings();
+    // 1. One-time Migration from localStorage to Firebase
+    migrateToFirebaseIfNeeded();
 
-    // Load Payment & LINE Settings
-    const paymentStored = localStorage.getItem('maycar_payment_settings');
-    if (paymentStored) {
-        const settings = JSON.parse(paymentStored);
-        document.getElementById('bank-name').value = settings.bankName || '';
-        document.getElementById('bank-acc-name').value = settings.accountName || ''; // Updated field
-        document.getElementById('bank-acc-num').value = settings.accountNumber || ''; // Updated field
-        document.getElementById('qr-url').value = settings.qrUrl || '';
-        document.getElementById('line-access-token').value = settings.lineAccessToken || '';
-        document.getElementById('line-user-id').value = settings.lineUserId || '';
-        if (settings.qrUrl) previewQR();
-    }
+    // 2. Listen to Vehicles (Fleet)
+    db.ref('maycar_fleet').on('value', (snapshot) => {
+        const data = snapshot.val();
+        adminCarsData = data ? Object.values(data) : [];
+        renderAdminCarsTable();
+
+        // Also update local data.js-like behavior if needed for other parts
+        // but mostly we rely on adminCarsData here.
+    });
+
+    // 3. Listen to Bookings
+    db.ref('maycar_bookings').on('value', (snapshot) => {
+        renderAdminBookings(snapshot.val());
+    });
+
+    // 4. Listen to Notifications
+    db.ref('maycar_notifications').on('value', (snapshot) => {
+        renderNotifications(snapshot.val());
+    });
+
+    // 5. Listen to Payment & LINE Settings
+    db.ref('maycar_payment_settings').on('value', (snapshot) => {
+        const settings = snapshot.val();
+        if (settings) {
+            document.getElementById('bank-name').value = settings.bankName || '';
+            document.getElementById('bank-acc-name').value = settings.accountName || '';
+            document.getElementById('bank-acc-num').value = settings.accountNumber || '';
+            document.getElementById('qr-url').value = settings.qrUrl || '';
+            document.getElementById('line-access-token').value = settings.lineAccessToken || '';
+            document.getElementById('line-user-id').value = settings.lineUserId || '';
+            if (settings.qrUrl) previewQR();
+        }
+    });
 }
 
-function saveCarsToStorage() {
-    localStorage.setItem('maycar_fleet', JSON.stringify(adminCarsData));
+function migrateToFirebaseIfNeeded() {
+    const isMigrated = localStorage.getItem('maycar_firebase_migrated') === 'true';
+    if (!isMigrated) {
+        console.log('Migrating local data to Firebase...');
+
+        // Migrate Fleet
+        const localFleet = JSON.parse(localStorage.getItem('maycar_fleet') || '[]');
+        if (localFleet.length > 0) {
+            localFleet.forEach(car => {
+                db.ref('maycar_fleet').child(car.id).set(car);
+            });
+        } else {
+            // If empty, use data.js defaults
+            carsData.forEach(car => {
+                db.ref('maycar_fleet').child(car.id).set(car);
+            });
+        }
+
+        // Migrate Bookings
+        const localBookings = JSON.parse(localStorage.getItem('maycar_my_bookings') || '[]');
+        localBookings.forEach(b => {
+            db.ref('maycar_bookings').child(b.id).set(b);
+        });
+
+        // Migrate Settings
+        const localSettings = JSON.parse(localStorage.getItem('maycar_payment_settings') || '{}');
+        if (Object.keys(localSettings).length > 0) {
+            db.ref('maycar_payment_settings').set(localSettings);
+        }
+
+        localStorage.setItem('maycar_firebase_migrated', 'true');
+        console.log('Migration complete!');
+    }
 }
 
 // Cars Management
@@ -161,33 +205,24 @@ function saveCar(e) {
         pricePerDay: parseInt(document.getElementById('edit-car-price').value),
         seats: document.getElementById('edit-car-seats').value,
         transmission: document.getElementById('edit-car-trans').value,
-        image: document.getElementById('edit-car-img').value
+        image: document.getElementById('edit-car-img').value,
+        status: 'Available'
     };
 
-    if (id) {
-        // Edit existing
-        const index = adminCarsData.findIndex(c => c.id === id);
-        if (index !== -1) {
-            adminCarsData[index] = { ...adminCarsData[index], ...carData };
-            alert('อัปเดตข้อมูลรถสำเร็จ');
-        }
-    } else {
-        // Add new
-        const newId = 'c' + Date.now();
-        adminCarsData.push({ id: newId, ...carData });
-        alert('เพิ่มรถใหม่สำเร็จ');
-    }
+    const targetId = id || 'c' + Date.now();
+    carData.id = targetId;
 
-    saveCarsToStorage();
-    renderAdminCarsTable();
-    switchAdminView('cars-view', document.querySelector('.side-link[href="#cars"]'));
+    db.ref('maycar_fleet').child(targetId).set(carData).then(() => {
+        alert(id ? 'อัปเดตข้อมูลรถสำเร็จ' : 'เพิ่มรถใหม่สำเร็จ');
+        switchAdminView('cars-view', document.querySelector('.side-link[href="#cars"]'));
+    });
 }
 
 function deleteCar(carId) {
     if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบรถคันนี้?')) {
-        adminCarsData = adminCarsData.filter(c => c.id !== carId);
-        saveCarsToStorage();
-        renderAdminCarsTable();
+        db.ref('maycar_fleet').child(carId).remove().then(() => {
+            alert('ลบข้อมูลรถเรียบร้อยแล้ว');
+        });
     }
 }
 
@@ -216,8 +251,9 @@ function savePaymentSettings(e) {
         lineUserId: document.getElementById('line-user-id').value
     };
 
-    localStorage.setItem('maycar_payment_settings', JSON.stringify(settings));
-    alert('บันทึกการตั้งค่าเรียบร้อยแล้ว');
+    db.ref('maycar_payment_settings').set(settings).then(() => {
+        alert('บันทึกการตั้งค่าลง Firebase เรียบร้อยแล้ว (ทุกเครื่องจะเห็นข้อมูลนี้ทันที)');
+    });
 }
 
 async function testLineMessage() {
@@ -243,14 +279,14 @@ async function testLineMessage() {
             bReturn: "2024-03-02 10:00",
             carImage: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800"
         };
-        const success = await sendLineFlexMessage(testData, token, userId);
-        if (success) {
+        const result = await sendLineFlexMessage(testData, token, userId);
+        if (result.success) {
             alert('ส่งข้อความแจ้งเตือนสีสันสดใสสำเร็จ! กรุณาตรวจสอบใน LINE OA หรือกลุ่มของคุณ');
         } else {
-            alert('ส่งข้อความไม่สำเร็จ กรุณาตรวจสอบ Token/User ID อีกครั้ง (หรือลองเปิด CORS Proxy)');
+            alert('ส่งข้อความไม่สำเร็จ!\n\nสรุปสาเหตุ: ' + (result.error || 'ไม่พบสาเหตุที่แน่ชัด') + '\n\nวิธีแก้เบื้องต้น:\n1. ตรวจสอบว่าคัดลอก Token มาครบหรือไม่\n2. ตรวจสอบว่า User ID/Group ID ถูกต้องหรือไม่\n3. หากเป็น Group ID ต้องเชิญบอทเข้ากลุ่มก่อน\n4. ตรวจสอบ IP Whitelist ใน LINE Developer Console');
         }
     } catch (err) {
-        alert('เกิดข้อผิดพลาด: ' + err.message);
+        alert('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + err.message);
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -341,10 +377,17 @@ async function sendLineFlexMessage(data, token, userId) {
                 }]
             })
         });
-        return response.ok;
+
+        if (response.ok) {
+            return { success: true };
+        } else {
+            const errData = await response.json();
+            console.error('LINE Messaging API Error:', errData);
+            return { success: false, error: errData.message || JSON.stringify(errData) };
+        }
     } catch (error) {
-        console.error('LINE Messaging API Error:', error);
-        return false;
+        console.error('Fetch Error:', error);
+        return { success: false, error: 'เกิดข้อผิดพลาดในการเชื่อมต่อ (Network/Proxy Error): ' + error.message };
     }
 }
 
@@ -355,36 +398,17 @@ async function sendLineFlexMessage(data, token, userId) {
 let notifications = [];
 
 function initNotifications() {
-    const stored = localStorage.getItem('maycar_notifications');
-    if (stored) {
-        notifications = JSON.parse(stored);
-    }
-    renderNotifications();
-
-    // Poll for changes every 3 seconds (simulating realtime DB like Firebase/Supabase)
-    setInterval(() => {
-        const currentStored = localStorage.getItem('maycar_notifications');
-        const currentBookings = localStorage.getItem('maycar_my_bookings');
-
-        let changed = false;
-        if (currentStored && currentStored !== JSON.stringify(notifications)) {
-            notifications = JSON.parse(currentStored);
-            renderNotifications();
-            changed = true;
-        }
-
-        if (currentBookings) {
-            renderAdminBookings(); // Refresh table in case status changed in another tab or new booking arrived
-        }
-    }, 3000);
+    // Firebase listener handles this via initAdminData calls
 }
 
-function renderNotifications() {
+function renderNotifications(notifsObj) {
     const list = document.getElementById('notif-list');
     const badge = document.getElementById('notif-badge');
 
+    const notifs = notifsObj ? Object.values(notifsObj) : [];
+
     // Count unread
-    const unreadCount = notifications.filter(n => !n.isRead).length;
+    const unreadCount = notifs.filter(n => !n.isRead).length;
 
     if (unreadCount > 0) {
         badge.style.display = 'flex';
@@ -393,13 +417,13 @@ function renderNotifications() {
         badge.style.display = 'none';
     }
 
-    if (notifications.length === 0) {
+    if (notifs.length === 0) {
         list.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--text-secondary); font-size: 0.875rem;">ไม่มีการแจ้งเตือนใหม่</div>`;
         return;
     }
 
     // Sort descending by time
-    const sorted = [...notifications].sort((a, b) => b.timestamp - a.timestamp);
+    const sorted = notifs.sort((a, b) => b.timestamp - a.timestamp);
 
     list.innerHTML = sorted.map(notif => `
         <a href="#bookings" class="notif-item ${notif.isRead ? '' : 'unread'}" onclick="markAsRead('${notif.id}')">
@@ -421,20 +445,23 @@ function toggleNotificationDropdown() {
 }
 
 function markAsRead(id) {
-    const notif = notifications.find(n => n.id === id);
-    if (notif) {
-        notif.isRead = true;
-        localStorage.setItem('maycar_notifications', JSON.stringify(notifications));
-        renderNotifications();
+    db.ref('maycar_notifications').child(id).update({ isRead: true }).then(() => {
         switchAdminView('bookings-view', document.querySelector('.side-link[href="#bookings"]'));
-    }
+    });
 }
 
 function markAllNotificationsRead(e) {
     if (e) e.stopPropagation();
-    notifications.forEach(n => n.isRead = true);
-    localStorage.setItem('maycar_notifications', JSON.stringify(notifications));
-    renderNotifications();
+    db.ref('maycar_notifications').once('value').then(snapshot => {
+        const notifs = snapshot.val();
+        if (notifs) {
+            const updates = {};
+            Object.keys(notifs).forEach(id => {
+                updates[`${id}/isRead`] = true;
+            });
+            db.ref('maycar_notifications').update(updates);
+        }
+    });
 }
 
 // Utility: Time Ago Formatter
@@ -450,11 +477,13 @@ function formatTimeAgo(timestamp) {
 }
 
 // Bookings Management
-function renderAdminBookings() {
+function renderAdminBookings(bookingsObj) {
     const tbody = document.getElementById('bookings-table-body');
     if (!tbody) return;
 
-    const bookings = JSON.parse(localStorage.getItem('maycar_my_bookings') || '[]');
+    const bookings = bookingsObj ? Object.values(bookingsObj) : [];
+    // Sort descending by ID or Date if needed
+    bookings.sort((a, b) => b.id.localeCompare(a.id));
 
     if (bookings.length === 0) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 2rem; color: var(--text-secondary);">ยังไม่มีออเดอร์ในขณะนี้</td></tr>`;
@@ -518,23 +547,16 @@ function renderAdminBookings() {
 }
 
 function updateBookingStatus(bookingId, newStatus) {
-    const bookings = JSON.parse(localStorage.getItem('maycar_my_bookings') || '[]');
-    const index = bookings.findIndex(b => b.id === bookingId);
-    if (index !== -1) {
-        bookings[index].status = newStatus;
-        localStorage.setItem('maycar_my_bookings', JSON.stringify(bookings));
-        renderAdminBookings();
+    db.ref('maycar_bookings').child(bookingId).update({ status: newStatus }).then(() => {
         alert(`อัปเดตสถานะการจอง ${bookingId} เป็น ${newStatus} แล้ว`);
-    }
+    });
 }
 
 function deleteBooking(bookingId) {
     if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบการจอง ${bookingId}?`)) {
-        let bookings = JSON.parse(localStorage.getItem('maycar_my_bookings') || '[]');
-        bookings = bookings.filter(b => b.id !== bookingId);
-        localStorage.setItem('maycar_my_bookings', JSON.stringify(bookings));
-        renderAdminBookings();
-        alert(`ลบการจอง ${bookingId} เรียบร้อยแล้ว`);
+        db.ref('maycar_bookings').child(bookingId).remove().then(() => {
+            alert(`ลบการจอง ${bookingId} เรียบร้อยแล้ว`);
+        });
     }
 }
 
