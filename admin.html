@@ -50,13 +50,19 @@
                 <a href="index.html" class="logo">GOT<span>BIKE</span> <span
                         style="font-size: 0.875rem; color: var(--text-secondary); font-weight: 500;">ADMIN</span></a>
             </div>
+
+            <!-- Mobile hamburger button -->
+            <button class="admin-mobile-menu-btn" id="admin-mobile-menu-btn" onclick="toggleAdminMobileMenu()">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+
             <div class="admin-top-nav">
                 <a href="#dashboard" class="nav-item">แดชบอร์ด</a>
                 <a href="#cars" class="nav-item active">จัดการรถเช่า</a>
                 <a href="#bookings" class="nav-item">จัดการออเดอร์</a>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 1.5rem;">
+            <div class="admin-header-right">
                 <!-- Notification Bell -->
                 <div class="notification-container" style="position: relative; cursor: pointer;"
                     onclick="toggleNotificationDropdown()">
@@ -288,6 +294,12 @@
                                         </div>
                                     </div>
 
+                                    <div class="form-group" style="margin-top: 1rem;">
+                                        <label>รายละเอียดเพิ่มเติม</label>
+                                        <textarea id="edit-car-details" class="form-input" rows="3"
+                                            placeholder="เช่น รายละเอียดรถ, เงื่อนไขพิเศษ..."></textarea>
+                                    </div>
+
                                     <button type="submit" class="btn btn-primary" style="margin-top: 1rem;"><i
                                             class="fa-solid fa-save"></i> บันทึกข้อมูลรถ</button>
                                 </div>
@@ -362,6 +374,45 @@
 
     <script src="js/data.js"></script>
     <script src="js/admin.js"></script>
+    <script>
+        // Admin Mobile Menu Toggle
+        function toggleAdminMobileMenu() {
+            const sidebar = document.querySelector('.admin-sidebar');
+            const btn = document.getElementById('admin-mobile-menu-btn');
+            const icon = btn.querySelector('i');
+            const overlay = document.getElementById('admin-sidebar-overlay');
+
+            sidebar.classList.toggle('mobile-open');
+
+            if (sidebar.classList.contains('mobile-open')) {
+                icon.classList.replace('fa-bars', 'fa-xmark');
+                if (!overlay) {
+                    const ov = document.createElement('div');
+                    ov.id = 'admin-sidebar-overlay';
+                    ov.className = 'admin-sidebar-overlay active';
+                    ov.onclick = function () { toggleAdminMobileMenu(); };
+                    document.body.appendChild(ov);
+                } else {
+                    overlay.classList.add('active');
+                }
+            } else {
+                icon.classList.replace('fa-xmark', 'fa-bars');
+                if (overlay) overlay.classList.remove('active');
+            }
+        }
+
+        // Close sidebar when a side-link is clicked on mobile
+        document.querySelectorAll('.side-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    const sidebar = document.querySelector('.admin-sidebar');
+                    if (sidebar.classList.contains('mobile-open')) {
+                        toggleAdminMobileMenu();
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

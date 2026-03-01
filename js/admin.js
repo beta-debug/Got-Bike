@@ -177,6 +177,7 @@ function editCar(carId) {
     document.getElementById('edit-car-seats').value = car.seats;
     document.getElementById('edit-car-trans').value = car.transmission || 'Auto';
     document.getElementById('edit-car-img').value = car.image;
+    document.getElementById('edit-car-details').value = car.details || '';
 
     document.getElementById('car-form-title').innerText = 'แก้ไขรถ: ' + car.name;
     updateCarPreview(car.image);
@@ -206,6 +207,7 @@ function saveCar(e) {
         seats: document.getElementById('edit-car-seats').value,
         transmission: document.getElementById('edit-car-trans').value,
         image: document.getElementById('edit-car-img').value,
+        details: document.getElementById('edit-car-details').value,
         status: 'Available'
     };
 

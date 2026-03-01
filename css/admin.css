@@ -402,3 +402,107 @@ body.admin-body {
     color: #9CA3AF;
     margin-top: 0.25rem;
 }
+
+/* ==========================================================
+   Admin Mobile Responsiveness
+   ========================================================== */
+.admin-mobile-menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.5rem;
+}
+
+.admin-sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    width: 100%;
+    height: calc(100vh - 60px);
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.admin-sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .admin-header {
+        padding: 0 1rem;
+    }
+
+    .admin-mobile-menu-btn {
+        display: block;
+        margin-right: auto;
+        margin-left: 1rem;
+    }
+
+    .admin-logo .logo span:last-child {
+        display: none;
+        /* Hide 'ADMIN' text on very small screens to save space */
+    }
+
+    .admin-top-nav {
+        display: none;
+        /* Hide top nav links on mobile */
+    }
+
+    .admin-header-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .admin-profile>span {
+        display: none;
+        /* Hide 'Super Admin' text */
+    }
+
+    .admin-profile button {
+        padding: 0.4rem;
+        margin-left: 0.5rem;
+    }
+
+    /* Sidebar Mobile Slide-out */
+    .admin-sidebar {
+        position: fixed;
+        left: -250px;
+        top: 60px;
+        height: calc(100vh - 60px);
+        z-index: 1001;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .admin-sidebar.mobile-open {
+        left: 0;
+    }
+
+    .admin-main {
+        padding: 1rem;
+    }
+
+    /* Modify tables to scroll horizontally on mobile */
+    .data-table-container {
+        border-radius: 8px;
+    }
+
+    .admin-view .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
