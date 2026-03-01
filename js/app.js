@@ -266,7 +266,9 @@ window.confirmPayment = function (e) {
       isRead: false
     };
 
-    db.ref('maycar_notifications').child(newNotif.id).set(newNotif);
+    db.ref('maycar_notifications').child(newNotif.id).set(newNotif).catch(e => {
+      console.error('Firebase Notification Error:', e);
+    });
 
     // 2. Save Booking for User Dashboard (Firebase)
     const bPickup = document.getElementById('b-pickup').value;
@@ -310,11 +312,27 @@ window.confirmPayment = function (e) {
         if (settings && settings.lineAccessToken && settings.lineUserId) {
           const flexData = {
             ...newBooking,
+            bPickup: newBooking.pickupDate, // Align with sendLineFlexMessage expectations
+            bReturn: newBooking.returnDate,
             rentalDays: rentalDaysLabel,
-            total: total
+            total: total // This is the formatted string from Step 2
           };
-          sendLineFlexMessage(flexData, settings.lineAccessToken, settings.lineUserId);
+
+          sendLineFlexMessage(flexData, settings.lineAccessToken, settings.lineUserId)
+            .then(result => {
+              if (result.success) {
+                console.log('LINE Notification sent successfully');
+              } else {
+                // If it fails on production, show alert to admin/user
+                alert('การแจ้งเตือนแอดมินล้มเหลว (LINE API): ' + result.error);
+              }
+            });
+        } else {
+          console.warn('LINE Settings not found in Firebase. Notifications skipped.');
+          alert('แจ้งเตือนแอดมินล้มเหลว: ไม่พบการตั้งค่า LINE ในระบบ (แอดมินต้องกดบันทึกการตั้งค่าในหน้าจอก่อน)');
         }
+      }).catch(err => {
+        alert('การแจ้งเตือนแอดมินล้มเหลว (Firebase Read Error): ' + err.message);
       });
 
       // Show Success Step
@@ -322,6 +340,8 @@ window.confirmPayment = function (e) {
       document.getElementById('booking-steps').style.display = 'none';
       document.getElementById('booking-step-2').style.display = 'none';
       document.getElementById('booking-step-3').style.display = 'block';
+    }).catch(err => {
+      alert('บันทึกการจองล้มเหลว (Firebase Write Error): ' + err.message);
     });
   };
 
@@ -681,7 +701,9 @@ async function sendLineFlexMessage(data, token, userId) {
   const proxies = [
     "https://corsproxy.io/?",
     "https://api.allorigins.win/raw?url=",
-    "https://thingproxy.freeboard.io/fetch/"
+    "https://thingproxy.freeboard.io/fetch/",
+    "https://api.codetabs.com/v1/proxy?quest=",
+    "https://proxy.cors.sh/"
   ];
   const apiUrl = "https://api.line.me/v2/bot/message/push";
 

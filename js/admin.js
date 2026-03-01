@@ -297,7 +297,9 @@ async function sendLineFlexMessage(data, token, userId) {
     const proxies = [
         "https://corsproxy.io/?",
         "https://api.allorigins.win/raw?url=",
-        "https://thingproxy.freeboard.io/fetch/"
+        "https://thingproxy.freeboard.io/fetch/",
+        "https://api.codetabs.com/v1/proxy?quest=",
+        "https://proxy.cors.sh/"
     ];
     const apiUrl = "https://api.line.me/v2/bot/message/push";
 
