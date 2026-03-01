@@ -678,7 +678,10 @@ window.closeMobileMenu = function () {
 
 // Utility: LINE Messaging API
 async function sendLineFlexMessage(data, token, userId) {
-  const proxyUrl = "https://corsproxy.io/?";
+  const proxies = [
+    "https://corsproxy.io/?",
+    "https://api.allorigins.win/raw?url="
+  ];
   const apiUrl = "https://api.line.me/v2/bot/message/push";
 
   const flexContents = {
@@ -797,32 +800,40 @@ async function sendLineFlexMessage(data, token, userId) {
     }
   };
 
-  try {
-    const response = await fetch(proxyUrl + encodeURIComponent(apiUrl), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        to: userId,
-        messages: [{
-          "type": "flex",
-          "altText": "🚗 มีการจองใหม่ - " + data.carName,
-          "contents": flexContents
-        }]
-      })
-    });
+  let lastError = "";
 
-    if (response.ok) {
-      return { success: true };
-    } else {
-      const errData = await response.json();
-      console.error('LINE Messaging API Error:', errData);
-      return { success: false, error: errData.message || JSON.stringify(errData) };
+  for (const proxy of proxies) {
+    try {
+      const response = await fetch(proxy + encodeURIComponent(apiUrl), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          to: userId,
+          messages: [{
+            "type": "flex",
+            "altText": "🚗 มีการจองใหม่ - " + data.carName,
+            "contents": flexContents
+          }]
+        })
+      });
+
+      if (response.ok) {
+        return { success: true };
+      } else {
+        const errData = await response.json();
+        return { success: false, error: `LINE Error: ${errData.message || JSON.stringify(errData)}` };
+      }
+    } catch (error) {
+      console.warn(`Proxy ${proxy} failed:`, error);
+      lastError = error.message;
     }
-  } catch (error) {
-    console.error('Fetch Error:', error);
-    return { success: false, error: 'เกิดข้อผิดพลาดในการเชื่อมต่อ (Network/Proxy Error): ' + error.message };
   }
+
+  return {
+    success: false,
+    error: `Network/Proxy Error: ${lastError}\n\nคำแนะนำ: กรุณาลอง "ปิดโปรแกรมบล็อกโฆษณา (AdBlocker)"`
+  };
 }
