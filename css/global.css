@@ -1150,12 +1150,37 @@ footer {
     }
 
     .search-input-group .form-input {
-        height: 48px;
+        height: 44px;
+        min-height: 44px;
+        max-height: 44px;
         font-size: 0.9rem;
+        color: var(--text-primary);
+        -webkit-appearance: none;
+        appearance: none;
+        line-height: 44px;
+        padding: 0 0.75rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+    /* Normalize datetime-local on iOS to match select */
+    .search-input-group input[type="datetime-local"] {
+        height: 44px;
+        min-height: 44px;
+        max-height: 44px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+    }
+
+    .search-input-group select {
+        height: 44px;
+        min-height: 44px;
+        max-height: 44px;
     }
 
     .search-submit {
-        height: 48px;
+        height: 44px;
         font-size: 1rem;
     }
 
