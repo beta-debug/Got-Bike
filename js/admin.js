@@ -294,14 +294,6 @@ async function testLineMessage() {
 }
 
 async function sendLineFlexMessage(data, token, userId) {
-    const proxies = [
-        "https://corsproxy.io/?",
-        "https://api.allorigins.win/raw?url=",
-        "https://thingproxy.freeboard.io/fetch/",
-        "https://api.codetabs.com/v1/proxy?quest=",
-        "https://proxy.cors.sh/"
-    ];
-    const apiUrl = "https://api.line.me/v2/bot/message/push";
 
     const flexContents = {
         "type": "bubble",
@@ -324,21 +316,21 @@ async function sendLineFlexMessage(data, token, userId) {
                             "type": "box", "layout": "baseline", "spacing": "sm",
                             "contents": [
                                 { "type": "text", "text": "รถยนต์", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                                { "type": "text", "text": data.carName, "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
+                                { "type": "text", "text": data.carName || "-", "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
                             ]
                         },
                         {
                             "type": "box", "layout": "baseline", "spacing": "sm",
                             "contents": [
                                 { "type": "text", "text": "ลูกค้า", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                                { "type": "text", "text": data.customerName, "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
+                                { "type": "text", "text": data.customerName || "-", "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
                             ]
                         },
                         {
                             "type": "box", "layout": "baseline", "spacing": "sm",
                             "contents": [
                                 { "type": "text", "text": "ยอดรวม", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                                { "type": "text", "text": "฿" + data.total, "wrap": true, "color": "#ff5252", "size": "md", "flex": 4, "weight": "bold" }
+                                { "type": "text", "text": "฿" + (data.total || "0"), "wrap": true, "color": "#ff5252", "size": "md", "flex": 4, "weight": "bold" }
                             ]
                         }
                     ]
@@ -351,14 +343,14 @@ async function sendLineFlexMessage(data, token, userId) {
                             "type": "box", "layout": "baseline", "spacing": "sm",
                             "contents": [
                                 { "type": "text", "text": "📅 รับรถ", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                                { "type": "text", "text": data.bPickup, "wrap": true, "color": "#666666", "size": "sm", "flex": 3 }
+                                { "type": "text", "text": data.bPickup || "-", "wrap": true, "color": "#666666", "size": "sm", "flex": 3 }
                             ]
                         },
                         {
                             "type": "box", "layout": "baseline", "spacing": "sm",
                             "contents": [
                                 { "type": "text", "text": "📅 คืนรถ", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                                { "type": "text", "text": data.bReturn, "wrap": true, "color": "#666666", "size": "sm", "flex": 3 }
+                                { "type": "text", "text": data.bReturn || "-", "wrap": true, "color": "#666666", "size": "sm", "flex": 3 }
                             ]
                         }
                     ]
@@ -366,6 +358,43 @@ async function sendLineFlexMessage(data, token, userId) {
             ]
         }
     };
+
+    const lineMessages = [{
+        "type": "flex",
+        "altText": "🚗 มีการจองใหม่ - " + (data.carName || "รถเช่า"),
+        "contents": flexContents
+    }];
+
+    // Method 1: Use Vercel Serverless Function (production)
+    try {
+        const response = await fetch('/api/line-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                token: token,
+                to: userId,
+                messages: lineMessages
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            return { success: true };
+        } else if (result.error) {
+            return { success: false, error: result.error };
+        }
+    } catch (apiError) {
+        console.warn('[LINE] API route /api/line-push failed, trying CORS proxy fallback:', apiError.message);
+    }
+
+    // Method 2: Fallback to CORS proxies (for local development)
+    const proxies = [
+        "https://corsproxy.io/?",
+        "https://api.allorigins.win/raw?url=",
+        "https://thingproxy.freeboard.io/fetch/"
+    ];
+    const apiUrl = "https://api.line.me/v2/bot/message/push";
 
     let lastError = "";
 
@@ -379,11 +408,7 @@ async function sendLineFlexMessage(data, token, userId) {
                 },
                 body: JSON.stringify({
                     to: userId,
-                    messages: [{
-                        "type": "flex",
-                        "altText": "🚗 มีการจองใหม่ - " + data.carName,
-                        "contents": flexContents
-                    }]
+                    messages: lineMessages
                 })
             });
 
@@ -396,15 +421,12 @@ async function sendLineFlexMessage(data, token, userId) {
         } catch (error) {
             console.error(`[DEBUG] Proxy ${proxy} failed:`, error);
             lastError = error.message;
-            // Continue to next proxy
         }
     }
 
-    console.error('[DEBUG] All proxies failed. Last error:', lastError);
-
     return {
         success: false,
-        error: `Network/Proxy Error: ${lastError}\n\nคำแนะนำ:\n1. กรุณาลอง "ปิดโปรแกรมบล็อกโฆษณา (AdBlocker)"\n2. ลองใช้ "อินเทอร์เน็ตจากมือถือ (Hotspot)" แทน WiFi พื้นฐาน\n3. กดปุ่ม F12 บนคีย์บอร์ด แล้วถ่ายรูปหน้าจอที่มีตัวหนังสือสีแดงมาให้ผมดูครับ`
+        error: `ส่งข้อความไม่สำเร็จ: ${lastError}\n\nคำแนะนำ:\n1. ตรวจสอบว่า Token และ User ID ถูกต้อง\n2. ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต\n3. หากใช้ Group ID ต้องเชิญบอทเข้ากลุ่มก่อน`
     };
 }
 
