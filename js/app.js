@@ -680,7 +680,8 @@ window.closeMobileMenu = function () {
 async function sendLineFlexMessage(data, token, userId) {
   const proxies = [
     "https://corsproxy.io/?",
-    "https://api.allorigins.win/raw?url="
+    "https://api.allorigins.win/raw?url=",
+    "https://thingproxy.freeboard.io/fetch/"
   ];
   const apiUrl = "https://api.line.me/v2/bot/message/push";
 
@@ -827,13 +828,15 @@ async function sendLineFlexMessage(data, token, userId) {
         return { success: false, error: `LINE Error: ${errData.message || JSON.stringify(errData)}` };
       }
     } catch (error) {
-      console.warn(`Proxy ${proxy} failed:`, error);
+      console.error(`[DEBUG] Proxy ${proxy} failed:`, error);
       lastError = error.message;
     }
   }
 
+  console.error('[DEBUG] All proxies failed. Last error:', lastError);
+
   return {
     success: false,
-    error: `Network/Proxy Error: ${lastError}\n\nคำแนะนำ: กรุณาลอง "ปิดโปรแกรมบล็อกโฆษณา (AdBlocker)"`
+    error: `Network/Proxy Error: ${lastError}\n\nคำแนะนำ:\n1. กรุณาลอง "ปิดโปรแกรมบล็อกโฆษณา (AdBlocker)"\n2. ลองใช้ "อินเทอร์เน็ตจากมือถือ (Hotspot)" แทน WiFi พื้นฐาน\n3. กดปุ่ม F12 บนคีย์บอร์ด แล้วถ่ายรูปหน้าจอที่มีตัวหนังสือสีแดงมาให้ผมดูครับ`
   };
 }
