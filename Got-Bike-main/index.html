@@ -29,6 +29,7 @@
                     <a href="#home" class="active" onclick="closeMobileMenu()">หน้าแรก</a>
                     <a href="#fleet" onclick="closeMobileMenu()">เลือกรถเช่า</a>
                     <a href="#dashboard" onclick="closeMobileMenu()">ตรวจสอบการจอง</a>
+                    <a href="#contact" onclick="closeMobileMenu()">ติดต่อเรา</a>
                 </nav>
                 <div class="nav-actions">
                     <button onclick="toggleModal('loginModal'); closeMobileMenu();" class="btn btn-outline"
@@ -119,6 +120,22 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Contact CTA Banner on Home -->
+            <div style="background: linear-gradient(135deg, #1565C0 0%, #0d47a1 100%); padding: 3.5rem 1.5rem; color: white; text-align: center;">
+                <div class="container" style="max-width: 800px;">
+                    <h2 style="font-size: 2rem; margin-bottom: 0.75rem; color: white;">ต้องการความช่วยเหลือหรือสอบถามเรื่องการเช่ารถ?</h2>
+                    <p style="opacity: 0.9; font-size: 1.05rem; margin-bottom: 1.75rem;">ทีมงาน GOTBIKE พร้อมให้บริการและตอบคำถามคุณทุกวัน มีทั้งช่องทางแชทสด โทรศัพท์ และ LINE Official</p>
+                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                        <a href="#contact" class="btn" style="background: white; color: var(--primary); font-weight: 700; padding: 0.85rem 2rem; border-radius: 10px; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                            <i class="fa-solid fa-headset"></i> ไปที่หน้าติดต่อเรา
+                        </a>
+                        <button class="btn btn-outline" onclick="toggleChatWidget()" style="color: white; border-color: white; font-weight: 600; padding: 0.85rem 2rem; border-radius: 10px; display: inline-flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa-solid fa-comments"></i> แชทสดกับแอดมิน
+                        </button>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- View: Fleet Selection -->
@@ -206,6 +223,171 @@
             </div>
         </section>
 
+        <!-- View: Contact Us -->
+        <section id="contact" class="view">
+            <div class="contact-hero">
+                <div class="container">
+                    <h1 class="hero-title" style="font-size: 3rem; margin-bottom: 0.5rem;">ติดต่อเรา</h1>
+                    <p class="hero-subtitle" style="font-size: 1.1rem; opacity: 0.8;">
+                        มีคำถามหรือต้องการความช่วยเหลือ? ทีมงาน GOTBIKE พร้อมให้บริการคุณ</p>
+                </div>
+            </div>
+
+            <div class="contact-container">
+                <!-- Contact Cards -->
+                <div class="contact-grid">
+                    <div class="contact-card">
+                        <div class="contact-card-icon" style="background: rgba(25,118,210,0.1); color: var(--primary);">
+                            <i class="fa-solid fa-comments fa-2x"></i>
+                        </div>
+                        <h3>แชทสดกับแอดมิน</h3>
+                        <p>พูดคุยกับทีมงานได้ทันทีผ่านระบบแชทบนเว็บไซต์ ไม่ต้องติดตั้งแอปเพิ่ม</p>
+                        <button class="btn btn-primary" onclick="toggleChatWidget()" style="margin-top: 1rem; width: 100%;">
+                            <i class="fa-solid fa-paper-plane" style="margin-right: 0.5rem;"></i> เริ่มแชทเลย
+                        </button>
+                    </div>
+
+                    <div class="contact-card">
+                        <div class="contact-card-icon" style="background: rgba(16,185,129,0.1); color: #10b981;">
+                            <i class="fa-solid fa-phone fa-2x"></i>
+                        </div>
+                        <h3>โทรหาเรา</h3>
+                        <p>ติดต่อสายตรงทีมบริการลูกค้า จันทร์-อาทิตย์ 08:00 - 20:00 น.</p>
+                        <a href="tel:02-XXX-XXXX" class="btn btn-outline" style="margin-top: 1rem; width: 100%; display: inline-flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-phone" style="margin-right: 0.5rem;"></i> 02-XXX-XXXX
+                        </a>
+                    </div>
+
+                    <div class="contact-card">
+                        <div class="contact-card-icon" style="background: rgba(6,199,85,0.1); color: #06c755;">
+                            <i class="fa-brands fa-line fa-2x"></i>
+                        </div>
+                        <h3>LINE Official</h3>
+                        <p>แอดไลน์ @gotbike เพื่อรับข่าวสารโปรโมชั่นและสอบถามรายละเอียด</p>
+                        <a href="https://line.me/" target="_blank" class="btn btn-outline" style="margin-top: 1rem; width: 100%; display: inline-flex; align-items: center; justify-content: center; border-color: #06c755; color: #06c755;">
+                            <i class="fa-brands fa-line" style="margin-right: 0.5rem;"></i> @gotbike
+                        </a>
+                    </div>
+
+                    <div class="contact-card">
+                        <div class="contact-card-icon" style="background: rgba(239,68,68,0.1); color: #ef4444;">
+                            <i class="fa-solid fa-envelope fa-2x"></i>
+                        </div>
+                        <h3>อีเมล</h3>
+                        <p>ส่งอีเมลถึงเราได้ตลอด 24 ชั่วโมง ทีมงานจะตอบกลับภายใน 1 วันทำการ</p>
+                        <a href="mailto:support@gotbike.com" class="btn btn-outline" style="margin-top: 1rem; width: 100%; display: inline-flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-envelope" style="margin-right: 0.5rem;"></i> support@gotbike.com
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Direct Contact Form -->
+                <div class="contact-form-section" style="margin-bottom: 3rem;">
+                    <div class="contact-form-card">
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <span style="background: rgba(25, 118, 210, 0.1); color: var(--primary); padding: 0.35rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block; margin-bottom: 0.75rem;">
+                                <i class="fa-solid fa-paper-plane" style="margin-right: 0.35rem;"></i> แบบฟอร์มติดต่อ
+                            </span>
+                            <h2 style="margin: 0 0 0.5rem; font-size: 1.8rem; color: var(--text-primary);">ส่งข้อความถึงทีมงานแอดมิน</h2>
+                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">ฝากข้อความไว้เพื่อให้แอดมินติดต่อกลับโดยเร็วที่สุด หรือสอบถามรายละเอียดเพิ่มเติม</p>
+                        </div>
+
+                        <form id="contact-form" onsubmit="submitContactForm(event)">
+                            <div class="contact-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem;">
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">ชื่อ-นามสกุลของคุณ <span style="color: #ef4444;">*</span></label>
+                                    <input type="text" id="cf-name" class="form-input" required placeholder="เช่น สมชาย ใจดี">
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">เบอร์โทรศัพท์ติดต่อ <span style="color: #ef4444;">*</span></label>
+                                    <input type="tel" id="cf-phone" class="form-input" required placeholder="08X-XXX-XXXX">
+                                </div>
+                            </div>
+
+                            <div class="contact-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem;">
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">อีเมล (ถ้ามี)</label>
+                                    <input type="email" id="cf-email" class="form-input" placeholder="example@email.com">
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">เรื่องที่ต้องการติดต่อ <span style="color: #ef4444;">*</span></label>
+                                    <select id="cf-subject" class="form-input" required>
+                                        <option value="สอบถามข้อมูลรถเช่า">🚗 สอบถามข้อมูลรถเช่า</option>
+                                        <option value="จองรถกรณีเร่งด่วน">⚡ จองรถกรณีเร่งด่วน</option>
+                                        <option value="สอบถามโปรโมชั่น / ส่วนลด">🎁 สอบถามโปรโมชั่น / ส่วนลด</option>
+                                        <option value="แจ้งปัญหาการใช้งาน / การจอง">⚠️ แจ้งปัญหาการใช้งาน / การจอง</option>
+                                        <option value="ติดต่อสอบถามอื่นๆ">💬 ติดต่อสอบถามอื่นๆ</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">ข้อความรายละเอียด <span style="color: #ef4444;">*</span></label>
+                                <textarea id="cf-message" class="form-input" rows="4" required placeholder="พิมพ์ข้อความที่คุณต้องการสอบถามหรือแจ้งรายละเอียดที่นี่..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.05rem; font-weight: 700; border-radius: 12px; box-shadow: 0 4px 14px rgba(25, 118, 210, 0.3);">
+                                <i class="fa-solid fa-paper-plane" style="margin-right: 0.5rem;"></i> ส่งข้อความถึงแอดมิน
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="contact-faq">
+                    <h2 style="text-align: center; margin-bottom: 2rem;"><i class="fa-solid fa-circle-question" style="color: var(--primary); margin-right: 0.5rem;"></i>คำถามที่พบบ่อย</h2>
+                    <div class="faq-list">
+                        <div class="faq-item" onclick="this.classList.toggle('open')">
+                            <div class="faq-question">
+                                <span>ต้องเตรียมเอกสารอะไรบ้างในการเช่ารถ?</span>
+                                <i class="fa-solid fa-chevron-down faq-arrow"></i>
+                            </div>
+                            <div class="faq-answer">
+                                <p>บัตรประชาชนตัวจริง, ใบขับขี่ที่ยังไม่หมดอายุ, และเงินมัดจำตามเงื่อนไข</p>
+                            </div>
+                        </div>
+                        <div class="faq-item" onclick="this.classList.toggle('open')">
+                            <div class="faq-question">
+                                <span>สามารถยกเลิกการจองได้ไหม?</span>
+                                <i class="fa-solid fa-chevron-down faq-arrow"></i>
+                            </div>
+                            <div class="faq-answer">
+                                <p>สามารถยกเลิกได้ล่วงหน้าก่อนวันรับรถอย่างน้อย 24 ชั่วโมง ผ่านหน้าตรวจสอบการจอง หรือติดต่อแอดมินโดยตรง</p>
+                            </div>
+                        </div>
+                        <div class="faq-item" onclick="this.classList.toggle('open')">
+                            <div class="faq-question">
+                                <span>มีบริการจัดส่งรถถึงที่ไหม?</span>
+                                <i class="fa-solid fa-chevron-down faq-arrow"></i>
+                            </div>
+                            <div class="faq-answer">
+                                <p>มีครับ เราให้บริการส่งรถถึงสถานที่ที่คุณต้องการ สามารถระบุที่อยู่และลิงก์ Google Maps ตอนจองได้เลย</p>
+                            </div>
+                        </div>
+                        <div class="faq-item" onclick="this.classList.toggle('open')">
+                            <div class="faq-question">
+                                <span>ชำระเงินผ่านช่องทางไหนได้บ้าง?</span>
+                                <i class="fa-solid fa-chevron-down faq-arrow"></i>
+                            </div>
+                            <div class="faq-answer">
+                                <p>ชำระผ่านการโอนเงิน พร้อมแนบสลิปการโอนในขั้นตอนยืนยันการจอง ระบบรองรับ QR Code PromptPay</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CTA -->
+                <div class="contact-cta">
+                    <div class="contact-cta-icon">
+                        <i class="fa-solid fa-headset fa-3x"></i>
+                    </div>
+                    <h2>ต้องการความช่วยเหลือเพิ่มเติม?</h2>
+                    <p>ทีมงาน GOTBIKE พร้อมตอบทุกคำถามของคุณตลอดเวลา</p>
+                    <button class="btn btn-primary" onclick="toggleChatWidget()" style="padding: 1rem 2.5rem; font-size: 1.1rem;">
+                        <i class="fa-solid fa-comments" style="margin-right: 0.75rem;"></i> แชทกับเราตอนนี้
+                    </button>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- App Shell: Footer -->
@@ -228,7 +410,7 @@
                         <li><a href="#home">หน้าแรก</a></li>
                         <li><a href="#fleet">เช่ารถ</a></li>
                         <li><a href="#dashboard">ตรวจสอบการจอง</a></li>
-                        <li><a href="#">เงื่อนไขการเช่า</a></li>
+                        <li><a href="#contact">ติดต่อเรา</a></li>
                     </ul>
                 </div>
                 <div class="footer-col">

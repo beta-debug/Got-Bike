@@ -1,4 +1,5 @@
 let currentFleet = [];
+let cachedUserBookings = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Listen to Fleet changes in real-time
@@ -30,12 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAuthUI();
   initFleetFilters();
 
-  // 2. Global Event Listeners
-  window.addEventListener('hashchange', handleRouting);
+  // 2. Global Event Listeners — use wrapper to always call the LATEST handleRouting
+  window.addEventListener('hashchange', () => handleRouting());
   window.addEventListener('scroll', handleScroll);
 });
 
-// Routing
+// Routing (unified — directly calls renderDashboard when needed)
 function handleRouting() {
   const hash = window.location.hash || '#home';
   const views = document.querySelectorAll('.view');
@@ -55,6 +56,11 @@ function handleRouting() {
   const activeLink = document.querySelector(`.nav-links a[href="${hash}"]`);
   if (activeLink) {
     activeLink.classList.add('active');
+  }
+
+  // Trigger dashboard data load when navigating to dashboard
+  if (hash === '#dashboard' && typeof renderDashboard === 'function') {
+    renderDashboard();
   }
 }
 
@@ -585,13 +591,29 @@ window.renderDashboard = function () {
 
   const bookingsList = document.getElementById('user-bookings-list');
   const emptyState = document.getElementById('empty-bookings');
-  const userEmail = localStorage.getItem('userName');
+  const userEmail = (localStorage.getItem('userName') || '').trim().toLowerCase();
 
-  // Listen to bookings in real-time or just once? Let's use real-time for dashboard
+  // Listen to bookings in real-time
   db.ref('maycar_bookings').on('value', (snapshot) => {
-    const allBookings = snapshot.val() ? Object.values(snapshot.val()) : [];
+    const rawData = snapshot.val() || {};
+    const allBookings = [];
+    Object.keys(rawData).forEach(key => {
+      const item = rawData[key];
+      if (item && typeof item === 'object') {
+        allBookings.push({
+          ...item,
+          id: item.id || key
+        });
+      }
+    });
+
     cachedUserBookings = allBookings;
-    let bookings = allBookings.filter(b => b.customerEmail === userEmail);
+
+    // Filter user's bookings (case-insensitive email matching)
+    let bookings = allBookings.filter(b => {
+      if (!b.customerEmail || !userEmail) return false;
+      return b.customerEmail.trim().toLowerCase() === userEmail;
+    });
 
     // Apply filtering
     if (currentDashboardFilter === 'pending') {
@@ -610,7 +632,9 @@ window.renderDashboard = function () {
       emptyState.style.display = 'none';
 
       const formatDisplayDate = (dateStr) => {
+        if (!dateStr) return '-';
         const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
         return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       };
 
@@ -625,31 +649,41 @@ window.renderDashboard = function () {
         }
       };
 
-      const bookingsHTML = bookings.map(b => `
-            <div class="dashboard-card">
-                <div class="card-img-wrapper">
-                    <img src="${b.carImage}" alt="${b.carName}">
-                </div>
-                <div class="card-info">
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <span class="status-label" style="background: ${getStatusColor(b.status)}15; color: ${getStatusColor(b.status)}; border: 1px solid ${getStatusColor(b.status)}30;">
-                            ${b.status}
-                        </span>
-                        <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 500;">คิวอาร์เมอร์: ${b.id}</span>
-                    </div>
-                    <h3 style="margin: 0; font-size: 1.4rem; color: #1e293b;">${b.carName}</h3>
-                    <div class="card-meta">
-                        <div><i class="fa-regular fa-calendar-check"></i> รับรถ: ${formatDisplayDate(b.pickupDate)}</div>
-                        <div><i class="fa-regular fa-calendar-xmark"></i> คืนรถ: ${formatDisplayDate(b.returnDate)}</div>
-                    </div>
-                </div>
-                <div class="card-price-col">
-                    <span style="font-size: 0.875rem; color: #64748b; font-weight: 500;">ยอดรวมสุทธิ</span>
-                    <span style="font-size: 1.75rem; font-weight: 800; color: var(--primary); margin-bottom: 0.5rem;">฿${parseInt(b.totalAmount).toLocaleString()}</span>
-                    <button class="btn btn-outline" style="border-radius: 8px; font-weight: 600;" onclick="showReceipt('${b.id}')">ดูใบเสร็จ</button>
-                </div>
-            </div>
-        `).join('');
+      const bookingsHTML = bookings.map(b => {
+        const bId = b.id || 'BKG-00000';
+        const carImg = b.carImage || 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fd?auto=format&fit=crop&q=80&w=800';
+        const status = b.status || 'รอยืนยัน';
+        const statusColor = getStatusColor(status);
+        const rawAmt = parseInt(String(b.totalAmount || 0).replace(/,/g, '')) || 0;
+
+        return `
+          <div class="dashboard-card">
+              <div class="card-img-wrapper">
+                  <img src="${carImg}" alt="${b.carName || 'รถเช่า'}">
+              </div>
+              <div class="card-info">
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <span class="status-label" style="background: ${statusColor}15; color: ${statusColor}; border: 1px solid ${statusColor}30;">
+                          ${status}
+                      </span>
+                      <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 500;">รหัสการจอง: ${bId}</span>
+                  </div>
+                  <h3 style="margin: 0; font-size: 1.4rem; color: #1e293b;">${b.carName || 'รถเช่า GOTBIKE'}</h3>
+                  <div class="card-meta">
+                      <div><i class="fa-regular fa-calendar-check"></i> รับรถ: ${formatDisplayDate(b.pickupDate)}</div>
+                      <div><i class="fa-regular fa-calendar-xmark"></i> คืนรถ: ${formatDisplayDate(b.returnDate)}</div>
+                  </div>
+              </div>
+              <div class="card-price-col">
+                  <span style="font-size: 0.875rem; color: #64748b; font-weight: 500;">ยอดรวมสุทธิ</span>
+                  <span style="font-size: 1.75rem; font-weight: 800; color: var(--primary); margin-bottom: 0.5rem;">฿${rawAmt.toLocaleString()}</span>
+                  <button class="btn btn-outline" style="border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;" onclick="showReceipt('${bId}')">
+                      <i class="fa-solid fa-receipt"></i> ดูใบเสร็จ
+                  </button>
+              </div>
+          </div>
+        `;
+      }).join('');
 
       // Remove old cards
       Array.from(bookingsList.children).forEach(child => {
@@ -662,28 +696,20 @@ window.renderDashboard = function () {
   });
 };
 
-// Update handleRouting to trigger Dashboard render
-const originalHandleRouting = handleRouting;
-window.handleRouting = function () {
-  originalHandleRouting();
-  const hash = window.location.hash || '#home';
-  if (hash === '#dashboard') {
-    renderDashboard();
-  }
-};
+// Auth handlers refresh dashboard after login/logout
+(function() {
+  const _origLogin = window.handleLogin;
+  window.handleLogin = function (e) {
+    _origLogin(e);
+    if (window.location.hash === '#dashboard') renderDashboard();
+  };
 
-// Update auth handlers to refresh dashboard
-const originalHandleLogin = window.handleLogin;
-window.handleLogin = function (e) {
-  originalHandleLogin(e);
-  if (window.location.hash === '#dashboard') renderDashboard();
-};
-
-const originalHandleLogout = window.handleLogout;
-window.handleLogout = function () {
-  originalHandleLogout();
-  if (window.location.hash === '#dashboard') renderDashboard();
-};
+  const _origLogout = window.handleLogout;
+  window.handleLogout = function () {
+    _origLogout();
+    if (window.location.hash === '#dashboard') renderDashboard();
+  };
+})();
 
 // Mobile Menu Logic
 window.toggleMobileMenu = function () {
@@ -909,112 +935,181 @@ async function sendLineFlexMessage(data, token, userId) {
 // Receipt System
 // ============================================
 
-let cachedUserBookings = [];
-
 window.showReceipt = function (bookingId) {
-  const modal = document.getElementById('receiptModal');
-
-  const populateReceiptUI = (b) => {
-    if (!b) return;
-    try {
-      const formatDate = (dateStr) => {
-        if (!dateStr) return '-';
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      };
-
-      const getStatusColor = (status) => {
-        switch (status) {
-          case 'รอยืนยัน': return '#f59e0b';
-          case 'ยืนยันแล้ว': return '#10b981';
-          case 'กำลังใช้งาน': return '#3b82f6';
-          case 'เสร็จสิ้น': return '#6b7280';
-          case 'ยกเลิก': return '#ef4444';
-          default: return '#6b7280';
-        }
-      };
-
-      const statusColor = getStatusColor(b.status || 'รอยืนยัน');
-
-      const idEl = document.getElementById('receipt-booking-id');
-      if (idEl) idEl.innerText = b.id || bookingId;
-
-      const imgEl = document.getElementById('receipt-car-img');
-      if (imgEl) imgEl.src = b.carImage || 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fd?auto=format&fit=crop&q=80&w=800';
-
-      const nameEl = document.getElementById('receipt-car-name');
-      if (nameEl) nameEl.innerText = b.carName || 'รถเช่า GOTBIKE';
-      
-      const statusEl = document.getElementById('receipt-status');
-      if (statusEl) {
-        statusEl.innerText = b.status || 'รอยืนยัน';
-        statusEl.style.background = statusColor + '15';
-        statusEl.style.color = statusColor;
-        statusEl.style.border = '1px solid ' + statusColor + '30';
-      }
-
-      const custName = document.getElementById('receipt-customer-name');
-      if (custName) custName.innerText = b.customerName || localStorage.getItem('userFullName') || '-';
-
-      const custEmail = document.getElementById('receipt-customer-email');
-      if (custEmail) custEmail.innerText = b.customerEmail || localStorage.getItem('userName') || '-';
-
-      const custPhone = document.getElementById('receipt-customer-phone');
-      if (custPhone) custPhone.innerText = b.customerPhone || localStorage.getItem('userPhone') || '-';
-
-      const pickupEl = document.getElementById('receipt-pickup');
-      if (pickupEl) pickupEl.innerText = formatDate(b.pickupDate);
-
-      const returnEl = document.getElementById('receipt-return');
-      if (returnEl) returnEl.innerText = formatDate(b.returnDate);
-
-      const totalEl = document.getElementById('receipt-total');
-      if (totalEl) {
-        const rawAmt = parseInt(String(b.totalAmount || 0).replace(/,/g, '')) || 0;
-        totalEl.innerText = '฿' + rawAmt.toLocaleString();
-      }
-
-      if (modal) modal.classList.add('active');
-    } catch (err) {
-      console.error('Error rendering receipt:', err);
+  try {
+    console.log('[Receipt] showReceipt called with id:', bookingId);
+    const modal = document.getElementById('receiptModal');
+    if (!modal) {
+      console.error('[Receipt] receiptModal element not found in DOM!');
+      alert('ระบบใบเสร็จเกิดข้อผิดพลาด กรุณารีเฟรชหน้าเว็บแล้วลองใหม่');
+      return;
     }
-  };
 
-  // 1. Check in cached bookings first (Instant display without network wait!)
-  const localBooking = cachedUserBookings.find(b => b.id === bookingId);
-  if (localBooking) {
-    populateReceiptUI(localBooking);
-  } else if (modal) {
-    // Show modal right away
+    // 1. Show modal immediately so user sees instant visual feedback
     modal.classList.add('active');
-  }
+    document.body.style.overflow = 'hidden';
 
-  // 2. Fetch from Firebase for latest data
-  db.ref('maycar_bookings').child(bookingId).once('value').then((snapshot) => {
-    const b = snapshot.val();
-    if (b) {
-      populateReceiptUI(b);
-    } else if (!localBooking) {
-      alert('ไม่พบข้อมูลการจอง: ' + bookingId);
-      if (modal) modal.classList.remove('active');
+    const safeBookingId = String(bookingId || '').trim();
+
+    // 2. Set placeholder ID
+    const idEl = document.getElementById('receipt-booking-id');
+    if (idEl) idEl.innerText = safeBookingId || 'กำลังโหลด...';
+
+    const populateReceiptUI = (b) => {
+      if (!b) return;
+      try {
+        const formatDate = (dateStr) => {
+          if (!dateStr) return '-';
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        };
+
+        const getStatusColor = (status) => {
+          switch (status) {
+            case 'รอยืนยัน': return '#f59e0b'; // Amber
+            case 'ยืนยันแล้ว': return '#10b981'; // Green
+            case 'กำลังใช้งาน': return '#3b82f6'; // Blue
+            case 'เสร็จสิ้น': return '#6b7280'; // Gray
+            case 'ยกเลิก': return '#ef4444'; // Red
+            default: return '#6b7280';
+          }
+        };
+
+        const statusColor = getStatusColor(b.status || 'รอยืนยัน');
+
+        if (idEl) idEl.innerText = b.id || safeBookingId || 'BKG-00000';
+
+        const imgEl = document.getElementById('receipt-car-img');
+        if (imgEl) imgEl.src = b.carImage || 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fd?auto=format&fit=crop&q=80&w=800';
+
+        const nameEl = document.getElementById('receipt-car-name');
+        if (nameEl) nameEl.innerText = b.carName || 'รถเช่า GOTBIKE';
+
+        const statusEl = document.getElementById('receipt-status');
+        if (statusEl) {
+          statusEl.innerText = b.status || 'รอยืนยัน';
+          statusEl.style.background = statusColor + '15';
+          statusEl.style.color = statusColor;
+          statusEl.style.border = '1px solid ' + statusColor + '30';
+        }
+
+        const custName = document.getElementById('receipt-customer-name');
+        if (custName) custName.innerText = b.customerName || localStorage.getItem('userFullName') || '-';
+
+        const custEmail = document.getElementById('receipt-customer-email');
+        if (custEmail) custEmail.innerText = b.customerEmail || localStorage.getItem('userName') || '-';
+
+        const custPhone = document.getElementById('receipt-customer-phone');
+        if (custPhone) custPhone.innerText = b.customerPhone || localStorage.getItem('userPhone') || '-';
+
+        const pickupEl = document.getElementById('receipt-pickup');
+        if (pickupEl) pickupEl.innerText = formatDate(b.pickupDate);
+
+        const returnEl = document.getElementById('receipt-return');
+        if (returnEl) returnEl.innerText = formatDate(b.returnDate);
+
+        const totalEl = document.getElementById('receipt-total');
+        if (totalEl) {
+          const rawAmt = parseInt(String(b.totalAmount || 0).replace(/,/g, '')) || 0;
+          totalEl.innerText = '฿' + rawAmt.toLocaleString();
+        }
+
+        console.log('[Receipt] UI populated for booking:', b.id || safeBookingId);
+      } catch (err) {
+        console.error('[Receipt] Error rendering receipt UI:', err);
+      }
+    };
+
+    // 3. Populate from cache first if available (instant display)
+    let localBooking = (cachedUserBookings || []).find(b => b.id === safeBookingId);
+    if (!localBooking && cachedUserBookings && cachedUserBookings.length > 0) {
+      localBooking = cachedUserBookings.find(b => String(b.id).includes(safeBookingId) || safeBookingId.includes(String(b.id)));
     }
-  }).catch((err) => {
-    console.error('Error fetching receipt from Firebase:', err);
-    if (!localBooking) {
-      alert('ไม่สามารถโหลดข้อมูลการจองได้ กรุณาลองใหม่อีกครั้ง');
-      if (modal) modal.classList.remove('active');
+    if (localBooking) {
+      populateReceiptUI(localBooking);
     }
-  });
+
+    // 4. Always fetch latest from Firebase
+    if (typeof db !== 'undefined' && db && safeBookingId) {
+      db.ref('maycar_bookings').child(safeBookingId).once('value').then((snapshot) => {
+        const b = snapshot.val();
+        if (b) {
+          populateReceiptUI({ ...b, id: b.id || safeBookingId });
+        } else {
+          // If not found by direct key, search through all entries
+          db.ref('maycar_bookings').once('value').then(allSnap => {
+            const allVal = allSnap.val();
+            if (allVal) {
+              const match = Object.keys(allVal)
+                .map(k => ({ ...allVal[k], id: allVal[k].id || k }))
+                .find(item => item.id === safeBookingId);
+              if (match) populateReceiptUI(match);
+            }
+          }).catch(console.warn);
+        }
+      }).catch((err) => {
+        console.error('[Receipt] Firebase fetch error:', err);
+      });
+    }
+  } catch (err) {
+    console.error('[Receipt] Unexpected error in showReceipt:', err);
+    alert('เกิดข้อผิดพลาดในการเปิดใบเสร็จ: ' + err.message);
+  }
 };
 
 window.closeReceiptModal = function () {
   const modal = document.getElementById('receiptModal');
   if (modal) modal.classList.remove('active');
+  document.body.style.overflow = '';
 };
 
 window.printReceipt = function () {
   window.print();
+};
+
+// Customer Direct Contact Form Handler
+window.submitContactForm = function (e) {
+  e.preventDefault();
+  const name = (document.getElementById('cf-name') ? document.getElementById('cf-name').value : '').trim();
+  const phone = (document.getElementById('cf-phone') ? document.getElementById('cf-phone').value : '').trim();
+  const email = (document.getElementById('cf-email') ? document.getElementById('cf-email').value : '').trim();
+  const subject = document.getElementById('cf-subject') ? document.getElementById('cf-subject').value : 'ติดต่อทั่วไป';
+  const message = (document.getElementById('cf-message') ? document.getElementById('cf-message').value : '').trim();
+
+  if (!name || !phone || !message) {
+    alert('กรุณากรอกข้อมูลสำคัญให้ครบถ้วน (ชื่อ, เบอร์โทรศัพท์, และข้อความ)');
+    return;
+  }
+
+  const newMsg = {
+    id: 'msg_' + Date.now(),
+    customerName: name,
+    customerPhone: phone,
+    customerEmail: email || '-',
+    subject: subject,
+    message: message,
+    timestamp: Date.now(),
+    isRead: false
+  };
+
+  // Push to Firebase Realtime DB
+  if (typeof db !== 'undefined' && db) {
+    db.ref('maycar_contact_messages').child(newMsg.id).set(newMsg).catch(console.error);
+
+    // Create Notification for Admin
+    const notif = {
+      id: 'n' + Date.now(),
+      title: 'มีข้อความติดต่อใหม่จากลูกค้า',
+      message: `คุณ ${name} (${phone}) เรื่อง: ${subject}`,
+      timestamp: Date.now(),
+      isRead: false
+    };
+    db.ref('maycar_notifications').child(notif.id).set(notif).catch(console.error);
+  }
+
+  alert('ขอบคุณสำหรับการติดต่อ! ทีมงาน GOTBIKE ได้รับข้อความของคุณเรียบร้อยแล้ว และจะติดต่อกลับโดยเร็วที่สุด');
+  e.target.reset();
 };
 
 // ============================================

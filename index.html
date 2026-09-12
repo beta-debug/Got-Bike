@@ -120,6 +120,22 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Contact CTA Banner on Home -->
+            <div style="background: linear-gradient(135deg, #1565C0 0%, #0d47a1 100%); padding: 3.5rem 1.5rem; color: white; text-align: center;">
+                <div class="container" style="max-width: 800px;">
+                    <h2 style="font-size: 2rem; margin-bottom: 0.75rem; color: white;">ต้องการความช่วยเหลือหรือสอบถามเรื่องการเช่ารถ?</h2>
+                    <p style="opacity: 0.9; font-size: 1.05rem; margin-bottom: 1.75rem;">ทีมงาน GOTBIKE พร้อมให้บริการและตอบคำถามคุณทุกวัน มีทั้งช่องทางแชทสด โทรศัพท์ และ LINE Official</p>
+                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                        <a href="#contact" class="btn" style="background: white; color: var(--primary); font-weight: 700; padding: 0.85rem 2rem; border-radius: 10px; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+                            <i class="fa-solid fa-headset"></i> ไปที่หน้าติดต่อเรา
+                        </a>
+                        <button class="btn btn-outline" onclick="toggleChatWidget()" style="color: white; border-color: white; font-weight: 600; padding: 0.85rem 2rem; border-radius: 10px; display: inline-flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa-solid fa-comments"></i> แชทสดกับแอดมิน
+                        </button>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- View: Fleet Selection -->
@@ -265,7 +281,57 @@
                     </div>
                 </div>
 
-                <!-- FAQ Section -->
+                <!-- Direct Contact Form -->
+                <div class="contact-form-section" style="margin-bottom: 3rem;">
+                    <div class="contact-form-card">
+                        <div style="text-align: center; margin-bottom: 2rem;">
+                            <span style="background: rgba(25, 118, 210, 0.1); color: var(--primary); padding: 0.35rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-block; margin-bottom: 0.75rem;">
+                                <i class="fa-solid fa-paper-plane" style="margin-right: 0.35rem;"></i> แบบฟอร์มติดต่อ
+                            </span>
+                            <h2 style="margin: 0 0 0.5rem; font-size: 1.8rem; color: var(--text-primary);">ส่งข้อความถึงทีมงานแอดมิน</h2>
+                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">ฝากข้อความไว้เพื่อให้แอดมินติดต่อกลับโดยเร็วที่สุด หรือสอบถามรายละเอียดเพิ่มเติม</p>
+                        </div>
+
+                        <form id="contact-form" onsubmit="submitContactForm(event)">
+                            <div class="contact-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem;">
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">ชื่อ-นามสกุลของคุณ <span style="color: #ef4444;">*</span></label>
+                                    <input type="text" id="cf-name" class="form-input" required placeholder="เช่น สมชาย ใจดี">
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">เบอร์โทรศัพท์ติดต่อ <span style="color: #ef4444;">*</span></label>
+                                    <input type="tel" id="cf-phone" class="form-input" required placeholder="08X-XXX-XXXX">
+                                </div>
+                            </div>
+
+                            <div class="contact-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem;">
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">อีเมล (ถ้ามี)</label>
+                                    <input type="email" id="cf-email" class="form-input" placeholder="example@email.com">
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">เรื่องที่ต้องการติดต่อ <span style="color: #ef4444;">*</span></label>
+                                    <select id="cf-subject" class="form-input" required>
+                                        <option value="สอบถามข้อมูลรถเช่า">🚗 สอบถามข้อมูลรถเช่า</option>
+                                        <option value="จองรถกรณีเร่งด่วน">⚡ จองรถกรณีเร่งด่วน</option>
+                                        <option value="สอบถามโปรโมชั่น / ส่วนลด">🎁 สอบถามโปรโมชั่น / ส่วนลด</option>
+                                        <option value="แจ้งปัญหาการใช้งาน / การจอง">⚠️ แจ้งปัญหาการใช้งาน / การจอง</option>
+                                        <option value="ติดต่อสอบถามอื่นๆ">💬 ติดต่อสอบถามอื่นๆ</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;">ข้อความรายละเอียด <span style="color: #ef4444;">*</span></label>
+                                <textarea id="cf-message" class="form-input" rows="4" required placeholder="พิมพ์ข้อความที่คุณต้องการสอบถามหรือแจ้งรายละเอียดที่นี่..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.05rem; font-weight: 700; border-radius: 12px; box-shadow: 0 4px 14px rgba(25, 118, 210, 0.3);">
+                                <i class="fa-solid fa-paper-plane" style="margin-right: 0.5rem;"></i> ส่งข้อความถึงแอดมิน
+                            </button>
+                        </form>
+                    </div>
+                </div>
                 <div class="contact-faq">
                     <h2 style="text-align: center; margin-bottom: 2rem;"><i class="fa-solid fa-circle-question" style="color: var(--primary); margin-right: 0.5rem;"></i>คำถามที่พบบ่อย</h2>
                     <div class="faq-list">
