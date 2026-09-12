@@ -30,12 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAuthUI();
   initFleetFilters();
 
-  // 2. Global Event Listeners
-  window.addEventListener('hashchange', handleRouting);
+  // 2. Global Event Listeners — use wrapper to always call the LATEST handleRouting
+  window.addEventListener('hashchange', () => handleRouting());
   window.addEventListener('scroll', handleScroll);
 });
 
-// Routing
+// Routing (unified — directly calls renderDashboard when needed)
 function handleRouting() {
   const hash = window.location.hash || '#home';
   const views = document.querySelectorAll('.view');
@@ -55,6 +55,11 @@ function handleRouting() {
   const activeLink = document.querySelector(`.nav-links a[href="${hash}"]`);
   if (activeLink) {
     activeLink.classList.add('active');
+  }
+
+  // Trigger dashboard data load when navigating to dashboard
+  if (hash === '#dashboard' && typeof renderDashboard === 'function') {
+    renderDashboard();
   }
 }
 
@@ -662,28 +667,20 @@ window.renderDashboard = function () {
   });
 };
 
-// Update handleRouting to trigger Dashboard render
-const originalHandleRouting = handleRouting;
-window.handleRouting = function () {
-  originalHandleRouting();
-  const hash = window.location.hash || '#home';
-  if (hash === '#dashboard') {
-    renderDashboard();
-  }
-};
+// Auth handlers refresh dashboard after login/logout
+(function() {
+  const _origLogin = window.handleLogin;
+  window.handleLogin = function (e) {
+    _origLogin(e);
+    if (window.location.hash === '#dashboard') renderDashboard();
+  };
 
-// Update auth handlers to refresh dashboard
-const originalHandleLogin = window.handleLogin;
-window.handleLogin = function (e) {
-  originalHandleLogin(e);
-  if (window.location.hash === '#dashboard') renderDashboard();
-};
-
-const originalHandleLogout = window.handleLogout;
-window.handleLogout = function () {
-  originalHandleLogout();
-  if (window.location.hash === '#dashboard') renderDashboard();
-};
+  const _origLogout = window.handleLogout;
+  window.handleLogout = function () {
+    _origLogout();
+    if (window.location.hash === '#dashboard') renderDashboard();
+  };
+})();
 
 // Mobile Menu Logic
 window.toggleMobileMenu = function () {
@@ -912,105 +909,122 @@ async function sendLineFlexMessage(data, token, userId) {
 let cachedUserBookings = [];
 
 window.showReceipt = function (bookingId) {
-  const modal = document.getElementById('receiptModal');
-
-  const populateReceiptUI = (b) => {
-    if (!b) return;
-    try {
-      const formatDate = (dateStr) => {
-        if (!dateStr) return '-';
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      };
-
-      const getStatusColor = (status) => {
-        switch (status) {
-          case 'รอยืนยัน': return '#f59e0b';
-          case 'ยืนยันแล้ว': return '#10b981';
-          case 'กำลังใช้งาน': return '#3b82f6';
-          case 'เสร็จสิ้น': return '#6b7280';
-          case 'ยกเลิก': return '#ef4444';
-          default: return '#6b7280';
-        }
-      };
-
-      const statusColor = getStatusColor(b.status || 'รอยืนยัน');
-
-      const idEl = document.getElementById('receipt-booking-id');
-      if (idEl) idEl.innerText = b.id || bookingId;
-
-      const imgEl = document.getElementById('receipt-car-img');
-      if (imgEl) imgEl.src = b.carImage || 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fd?auto=format&fit=crop&q=80&w=800';
-
-      const nameEl = document.getElementById('receipt-car-name');
-      if (nameEl) nameEl.innerText = b.carName || 'รถเช่า GOTBIKE';
-      
-      const statusEl = document.getElementById('receipt-status');
-      if (statusEl) {
-        statusEl.innerText = b.status || 'รอยืนยัน';
-        statusEl.style.background = statusColor + '15';
-        statusEl.style.color = statusColor;
-        statusEl.style.border = '1px solid ' + statusColor + '30';
-      }
-
-      const custName = document.getElementById('receipt-customer-name');
-      if (custName) custName.innerText = b.customerName || localStorage.getItem('userFullName') || '-';
-
-      const custEmail = document.getElementById('receipt-customer-email');
-      if (custEmail) custEmail.innerText = b.customerEmail || localStorage.getItem('userName') || '-';
-
-      const custPhone = document.getElementById('receipt-customer-phone');
-      if (custPhone) custPhone.innerText = b.customerPhone || localStorage.getItem('userPhone') || '-';
-
-      const pickupEl = document.getElementById('receipt-pickup');
-      if (pickupEl) pickupEl.innerText = formatDate(b.pickupDate);
-
-      const returnEl = document.getElementById('receipt-return');
-      if (returnEl) returnEl.innerText = formatDate(b.returnDate);
-
-      const totalEl = document.getElementById('receipt-total');
-      if (totalEl) {
-        const rawAmt = parseInt(String(b.totalAmount || 0).replace(/,/g, '')) || 0;
-        totalEl.innerText = '฿' + rawAmt.toLocaleString();
-      }
-
-      if (modal) modal.classList.add('active');
-    } catch (err) {
-      console.error('Error rendering receipt:', err);
+  try {
+    console.log('[Receipt] showReceipt called with id:', bookingId);
+    const modal = document.getElementById('receiptModal');
+    if (!modal) {
+      console.error('[Receipt] receiptModal element not found in DOM!');
+      alert('ระบบใบเสร็จเกิดข้อผิดพลาด กรุณารีเฟรชหน้าเว็บแล้วลองใหม่');
+      return;
     }
-  };
 
-  // 1. Check in cached bookings first (Instant display without network wait!)
-  const localBooking = cachedUserBookings.find(b => b.id === bookingId);
-  if (localBooking) {
-    populateReceiptUI(localBooking);
-  } else if (modal) {
-    // Show modal right away
+    // Show modal immediately so user sees feedback
     modal.classList.add('active');
-  }
+    document.body.style.overflow = 'hidden';
+    console.log('[Receipt] Modal opened');
 
-  // 2. Fetch from Firebase for latest data
-  db.ref('maycar_bookings').child(bookingId).once('value').then((snapshot) => {
-    const b = snapshot.val();
-    if (b) {
-      populateReceiptUI(b);
-    } else if (!localBooking) {
-      alert('ไม่พบข้อมูลการจอง: ' + bookingId);
-      if (modal) modal.classList.remove('active');
+    const populateReceiptUI = (b) => {
+      if (!b) return;
+      try {
+        const formatDate = (dateStr) => {
+          if (!dateStr) return '-';
+          const d = new Date(dateStr);
+          if (isNaN(d.getTime())) return dateStr;
+          return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        };
+
+        const getStatusColor = (status) => {
+          switch (status) {
+            case 'รอยืนยัน': return '#f59e0b';
+            case 'ยืนยันแล้ว': return '#10b981';
+            case 'กำลังใช้งาน': return '#3b82f6';
+            case 'เสร็จสิ้น': return '#6b7280';
+            case 'ยกเลิก': return '#ef4444';
+            default: return '#6b7280';
+          }
+        };
+
+        const statusColor = getStatusColor(b.status || 'รอยืนยัน');
+
+        const idEl = document.getElementById('receipt-booking-id');
+        if (idEl) idEl.innerText = b.id || bookingId;
+
+        const imgEl = document.getElementById('receipt-car-img');
+        if (imgEl) imgEl.src = b.carImage || 'https://images.unsplash.com/photo-1621007947382-bb3c3994e3fd?auto=format&fit=crop&q=80&w=800';
+
+        const nameEl = document.getElementById('receipt-car-name');
+        if (nameEl) nameEl.innerText = b.carName || 'รถเช่า GOTBIKE';
+
+        const statusEl = document.getElementById('receipt-status');
+        if (statusEl) {
+          statusEl.innerText = b.status || 'รอยืนยัน';
+          statusEl.style.background = statusColor + '15';
+          statusEl.style.color = statusColor;
+          statusEl.style.border = '1px solid ' + statusColor + '30';
+        }
+
+        const custName = document.getElementById('receipt-customer-name');
+        if (custName) custName.innerText = b.customerName || localStorage.getItem('userFullName') || '-';
+
+        const custEmail = document.getElementById('receipt-customer-email');
+        if (custEmail) custEmail.innerText = b.customerEmail || localStorage.getItem('userName') || '-';
+
+        const custPhone = document.getElementById('receipt-customer-phone');
+        if (custPhone) custPhone.innerText = b.customerPhone || localStorage.getItem('userPhone') || '-';
+
+        const pickupEl = document.getElementById('receipt-pickup');
+        if (pickupEl) pickupEl.innerText = formatDate(b.pickupDate);
+
+        const returnEl = document.getElementById('receipt-return');
+        if (returnEl) returnEl.innerText = formatDate(b.returnDate);
+
+        const totalEl = document.getElementById('receipt-total');
+        if (totalEl) {
+          const rawAmt = parseInt(String(b.totalAmount || 0).replace(/,/g, '')) || 0;
+          totalEl.innerText = '฿' + rawAmt.toLocaleString();
+        }
+
+        console.log('[Receipt] UI populated for booking:', b.id || bookingId);
+      } catch (err) {
+        console.error('[Receipt] Error rendering receipt UI:', err);
+      }
+    };
+
+    // 1. Populate from cache first if available (instant display)
+    const localBooking = cachedUserBookings.find(b => b.id === bookingId);
+    if (localBooking) {
+      populateReceiptUI(localBooking);
     }
-  }).catch((err) => {
-    console.error('Error fetching receipt from Firebase:', err);
-    if (!localBooking) {
-      alert('ไม่สามารถโหลดข้อมูลการจองได้ กรุณาลองใหม่อีกครั้ง');
-      if (modal) modal.classList.remove('active');
-    }
-  });
+
+    // 2. Always fetch latest from Firebase
+    db.ref('maycar_bookings').child(bookingId).once('value').then((snapshot) => {
+      const b = snapshot.val();
+      if (b) {
+        populateReceiptUI(b);
+      } else if (!localBooking) {
+        // No data at all — keep modal open but show placeholder values
+        console.warn('[Receipt] No booking found in Firebase for:', bookingId);
+        const idEl = document.getElementById('receipt-booking-id');
+        if (idEl) idEl.innerText = bookingId;
+      }
+    }).catch((err) => {
+      console.error('[Receipt] Firebase fetch error:', err);
+      // Modal stays open — user sees cached data or default values
+      if (!localBooking) {
+        const idEl = document.getElementById('receipt-booking-id');
+        if (idEl) idEl.innerText = bookingId;
+      }
+    });
+  } catch (err) {
+    console.error('[Receipt] Unexpected error in showReceipt:', err);
+    alert('เกิดข้อผิดพลาด: ' + err.message);
+  }
 };
 
 window.closeReceiptModal = function () {
   const modal = document.getElementById('receiptModal');
   if (modal) modal.classList.remove('active');
+  document.body.style.overflow = '';
 };
 
 window.printReceipt = function () {
