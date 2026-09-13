@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       renderFeaturedSaleCars();
       renderSaleFleet();
+      if (typeof renderDashboardSaleBikes === 'function') renderDashboardSaleBikes();
+      if (typeof initInstallmentCalc === 'function') initInstallmentCalc();
     });
 
     // Listen to Registered Users in real-time
@@ -73,6 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initFleetFilters();
   renderFeaturedSaleCars();
   renderSaleFleet();
+  if (typeof renderDashboardSaleBikes === 'function') renderDashboardSaleBikes();
+  if (typeof initInstallmentCalc === 'function') initInstallmentCalc();
 
   // 2. Global Event Listeners
   window.addEventListener('hashchange', () => handleRouting());
@@ -104,11 +108,13 @@ function handleRouting() {
   // View specific triggers
   if (hash === '#dashboard' && typeof renderDashboard === 'function') {
     renderDashboard();
+    if (typeof renderDashboardSaleBikes === 'function') renderDashboardSaleBikes();
   } else if (hash === '#sales') {
     renderSaleFleet();
   } else if (hash === '#home') {
     renderFeaturedCars();
     renderFeaturedSaleCars();
+    if (typeof initInstallmentCalc === 'function') initInstallmentCalc();
   }
 }
 
@@ -1606,4 +1612,238 @@ window.contactAdminAboutSaleBike = function() {
     inputEl.focus();
   }
 };
+
+// ============================================
+// Hero Search Switcher (Rent vs Sale)
+// ============================================
+window.switchHeroSearchMode = function(mode) {
+  const rentTab = document.getElementById('hero-tab-rent');
+  const saleTab = document.getElementById('hero-tab-sale');
+  const rentSearch = document.getElementById('hero-rent-search');
+  const saleSearch = document.getElementById('hero-sale-search');
+
+  if (mode === 'rent') {
+    if (rentTab) rentTab.classList.add('active');
+    if (saleTab) saleTab.classList.remove('active');
+    if (rentSearch) rentSearch.style.display = 'block';
+    if (saleSearch) saleSearch.style.display = 'none';
+  } else {
+    if (saleTab) saleTab.classList.add('active');
+    if (rentTab) rentTab.classList.remove('active');
+    if (saleSearch) saleSearch.style.display = 'block';
+    if (rentSearch) rentSearch.style.display = 'none';
+  }
+};
+
+window.executeHeroSaleSearch = function() {
+  const catEl = document.getElementById('hero-sale-category');
+  const budgetEl = document.getElementById('hero-sale-budget');
+  const selectedCat = catEl ? catEl.value : 'all';
+  const selectedBudget = budgetEl ? budgetEl.value : 'all';
+
+  navigate('sales');
+
+  setTimeout(() => {
+    const grid = document.getElementById('sale-cars-grid');
+    const countEl = document.getElementById('sale-count-num');
+    if (!grid) return;
+
+    let filtered = [...currentSaleFleet];
+
+    if (selectedCat && selectedCat !== 'all') {
+      filtered = filtered.filter(b => 
+        (b.category || '').toLowerCase() === selectedCat.toLowerCase() || 
+        (b.name || '').toLowerCase().includes(selectedCat.toLowerCase())
+      );
+    }
+
+    if (selectedBudget && selectedBudget !== 'all') {
+      const parts = selectedBudget.split('-');
+      const min = parseInt(parts[0]) || 0;
+      const max = parseInt(parts[1]) || Infinity;
+      filtered = filtered.filter(b => {
+        const cash = parseInt(b.priceCash || 0);
+        return cash >= min && cash <= max;
+      });
+    }
+
+    if (countEl) countEl.textContent = filtered.length;
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem; background: var(--bg-white); border-radius: 16px; border: 2px dashed #e2e8f0;">
+          <i class="fa-solid fa-magnifying-glass fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
+          <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">ไม่พบรถตามเงื่อนไขที่ค้นหา</h3>
+          <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">ลองเปลี่ยนช่วงราคาหรือประเภทรถ หรือดูรถทั้งหมด</p>
+          <button class="btn btn-outline" onclick="renderSaleFleet()">แสดงรถทั้งหมด</button>
+        </div>
+      `;
+    } else {
+      grid.innerHTML = filtered.map(bike => createSaleCardHTML(bike)).join('');
+    }
+  }, 100);
+};
+
+// ============================================
+// Interactive Installment Calculator
+// ============================================
+let currentCalcTerm = 48;
+
+window.initInstallmentCalc = function() {
+  const selectEl = document.getElementById('calc-bike-select');
+  if (!selectEl) return;
+
+  if (currentSaleFleet && currentSaleFleet.length > 0) {
+    selectEl.innerHTML = currentSaleFleet.map((bike, idx) => `
+      <option value="${bike.id}" data-price="${bike.priceCash || 0}" ${idx === 0 ? 'selected' : ''}>
+        ${escapeHtml(bike.name)} (฿${parseInt(bike.priceCash || 0).toLocaleString()})
+      </option>
+    `).join('');
+
+    const firstBike = currentSaleFleet[0];
+    const priceInput = document.getElementById('calc-price-input');
+    if (priceInput && firstBike) {
+      priceInput.value = firstBike.priceCash || 179000;
+    }
+  }
+
+  recalcInstallment();
+};
+
+window.onCalcBikeSelectChange = function(selectEl) {
+  const selectedOption = selectEl.options[selectEl.selectedIndex];
+  if (!selectedOption) return;
+  const price = selectedOption.getAttribute('data-price');
+  const priceInput = document.getElementById('calc-price-input');
+  if (priceInput && price) {
+    priceInput.value = price;
+  }
+  recalcInstallment();
+};
+
+window.onCalcDownSliderChange = function(pct) {
+  const pctDisplay = document.getElementById('calc-down-pct');
+  if (pctDisplay) pctDisplay.textContent = pct + '%';
+  recalcInstallment();
+};
+
+window.selectCalcTerm = function(termMonths, btn) {
+  currentCalcTerm = parseInt(termMonths) || 48;
+  document.querySelectorAll('.calc-term-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  recalcInstallment();
+};
+
+window.recalcInstallment = function() {
+  const priceInput = document.getElementById('calc-price-input');
+  const downSlider = document.getElementById('calc-down-slider');
+  const downDisplay = document.getElementById('calc-down-display');
+  const resultMonthly = document.getElementById('calc-result-monthly');
+  const resultTermText = document.getElementById('calc-result-term-text');
+  const summaryPrice = document.getElementById('calc-summary-price');
+  const summaryDown = document.getElementById('calc-summary-down');
+  const summaryLoan = document.getElementById('calc-summary-loan');
+
+  const price = Math.max(0, parseInt(priceInput ? priceInput.value : 0) || 0);
+  const downPct = parseInt(downSlider ? downSlider.value : 0) || 0;
+  const downAmount = Math.round(price * (downPct / 100));
+  const loanPrincipal = Math.max(0, price - downAmount);
+  const termMonths = currentCalcTerm || 48;
+
+  // Approx 3.5% flat interest per year
+  const annualInterestRate = 0.035;
+  const years = termMonths / 12;
+  const totalInterest = Math.round(loanPrincipal * annualInterestRate * years);
+  const totalLoanAmount = loanPrincipal + totalInterest;
+  const monthlyPayment = termMonths > 0 ? Math.round(totalLoanAmount / termMonths) : 0;
+
+  if (downDisplay) {
+    downDisplay.textContent = downPct === 0 ? '฿0 (ฟรีดาวน์)' : `฿${downAmount.toLocaleString()} (${downPct}%)`;
+  }
+  if (resultMonthly) {
+    resultMonthly.textContent = `฿${monthlyPayment.toLocaleString()}`;
+  }
+  if (resultTermText) {
+    resultTermText.textContent = termMonths;
+  }
+  if (summaryPrice) {
+    summaryPrice.textContent = `฿${price.toLocaleString()}`;
+  }
+  if (summaryDown) {
+    summaryDown.textContent = downPct === 0 ? '฿0 (ฟรีดาวน์)' : `฿${downAmount.toLocaleString()}`;
+  }
+  if (summaryLoan) {
+    summaryLoan.textContent = `฿${loanPrincipal.toLocaleString()}`;
+  }
+};
+
+window.consultLoanWithAdmin = function() {
+  const selectEl = document.getElementById('calc-bike-select');
+  const priceInput = document.getElementById('calc-price-input');
+  const downSlider = document.getElementById('calc-down-slider');
+  const resultMonthly = document.getElementById('calc-result-monthly');
+
+  const bikeName = selectEl && selectEl.options[selectEl.selectedIndex] ? selectEl.options[selectEl.selectedIndex].text : 'รถมอเตอร์ไซค์';
+  const price = priceInput ? parseInt(priceInput.value || 0).toLocaleString() : '0';
+  const downPct = downSlider ? downSlider.value : '0';
+  const term = currentCalcTerm || 48;
+  const monthly = resultMonthly ? resultMonthly.textContent : '-';
+
+  const message = `สวัสดีครับ สนใจปรึกษาเรื่องจัดไฟแนนซ์: ${bikeName}\n- ราคารถ: ฿${price}\n- เงินดาวน์: ${downPct}%\n- ระยะเวลาผ่อน: ${term} เดือน (ประมาณ ${monthly}/เดือน)`;
+
+  toggleChatWidget();
+  sendQuickChatMessage(message);
+};
+
+window.sendQuickChatMessage = function(text) {
+  const inputEl = document.getElementById('chat-input');
+  if (inputEl) {
+    inputEl.value = text;
+    inputEl.focus();
+  }
+};
+
+// ============================================
+// User Dashboard Sales Bikes Tab
+// ============================================
+window.switchDashboardMainTab = function(tab) {
+  const rentalsBtn = document.getElementById('dash-tab-rentals-btn');
+  const salesBtn = document.getElementById('dash-tab-sales-btn');
+  const rentalsPanel = document.getElementById('dash-rentals-panel');
+  const salesPanel = document.getElementById('dash-sales-panel');
+
+  if (tab === 'rentals') {
+    if (rentalsBtn) rentalsBtn.classList.add('active');
+    if (salesBtn) salesBtn.classList.remove('active');
+    if (rentalsPanel) rentalsPanel.style.display = 'block';
+    if (salesPanel) salesPanel.style.display = 'none';
+  } else {
+    if (salesBtn) salesBtn.classList.add('active');
+    if (rentalsBtn) rentalsBtn.classList.remove('active');
+    if (salesPanel) salesPanel.style.display = 'block';
+    if (rentalsPanel) rentalsPanel.style.display = 'none';
+    renderDashboardSaleBikes();
+  }
+};
+
+window.renderDashboardSaleBikes = function() {
+  const grid = document.getElementById('dash-sales-grid');
+  if (!grid) return;
+
+  const featured = currentSaleFleet.filter(b => b.isFeatured !== false);
+  const displayItems = (featured.length > 0 ? featured : currentSaleFleet).slice(0, 6);
+
+  if (displayItems.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 3rem 2rem; background: var(--bg-white); border-radius: 16px; border: 2px dashed #e2e8f0;">
+        <i class="fa-solid fa-tags fa-2x" style="color: #cbd5e1; margin-bottom: 0.75rem;"></i>
+        <p style="color: var(--text-secondary); margin: 0;">ยังไม่มีรายการรถขายแนะนำในขณะนี้</p>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = displayItems.map(bike => createSaleCardHTML(bike)).join('');
+};
+
 

@@ -150,8 +150,17 @@
                                 <i class="fa-solid fa-car"></i>
                             </div>
                             <div class="stat-info">
-                                <span class="stat-label">จำนวนรถทั้งหมด</span>
+                                <span class="stat-label">รถเช่าทั้งหมด</span>
                                 <span class="stat-value" id="stat-total-cars">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(245, 158, 11, 0.12); color: #d97706;">
+                                <i class="fa-solid fa-motorcycle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">รถขายทั้งหมด</span>
+                                <span class="stat-value" id="stat-total-sales">0</span>
                             </div>
                         </div>
                         <div class="stat-card">
@@ -177,14 +186,27 @@
                                 <i class="fa-solid fa-clock"></i>
                             </div>
                             <div class="stat-info">
-                                <span class="stat-label">รอยืนยัน</span>
+                                <span class="stat-label">ออเดอร์รอยืนยัน</span>
                                 <span class="stat-value" id="stat-pending-orders">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                                <i class="fa-solid fa-envelope-open-text"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">ข้อความติดต่อ</span>
+                                <span class="stat-value" id="stat-total-contacts">0</span>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Recent Orders -->
                     <div style="margin-top: 2rem;">
-                        <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-clock-rotate-left" style="margin-right: 0.5rem; color: var(--primary);"></i> ออเดอร์ล่าสุด</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="margin: 0;"><i class="fa-solid fa-clock-rotate-left" style="margin-right: 0.5rem; color: var(--primary);"></i> ออเดอร์ล่าสุด</h3>
+                            <button class="btn btn-outline" onclick="switchAdminView('bookings-view')" style="padding: 0.35rem 0.8rem; font-size: 0.8rem;">ดูออเดอร์ทั้งหมด <i class="fa-solid fa-arrow-right"></i></button>
+                        </div>
                         <div class="data-table-container">
                             <table class="data-table">
                                 <thead>
@@ -198,6 +220,32 @@
                                 </thead>
                                 <tbody id="dashboard-recent-orders">
                                     <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-secondary);">กำลังโหลด...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Recent & Featured Sale Bikes (Requirement 2) -->
+                    <div style="margin-top: 2.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="margin: 0;"><i class="fa-solid fa-motorcycle" style="margin-right: 0.5rem; color: #f59e0b;"></i> รายการรถขายในระบบ & รถขายแนะนำ</h3>
+                            <button class="btn btn-outline" onclick="switchAdminView('sales-view')" style="padding: 0.35rem 0.8rem; font-size: 0.8rem;">จัดการรถขายทั้งหมด <i class="fa-solid fa-arrow-right"></i></button>
+                        </div>
+                        <div class="data-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>รูปรถ</th>
+                                        <th>รุ่นรถ</th>
+                                        <th>ราคาสด</th>
+                                        <th>เงินดาวน์</th>
+                                        <th>ค่างวดผ่อน</th>
+                                        <th>แนะนำหน้าแรก</th>
+                                        <th style="text-align: right;">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboard-recent-sales">
+                                    <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-secondary);">กำลังโหลด...</td></tr>
                                 </tbody>
                             </table>
                         </div>

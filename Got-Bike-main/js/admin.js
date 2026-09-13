@@ -855,12 +855,22 @@ window.renderDashboardStats = function () {
     const totalOrdersEl = document.getElementById('stat-total-orders');
     const totalRevEl = document.getElementById('stat-total-revenue');
     const pendingOrdersEl = document.getElementById('stat-pending-orders');
+    const totalSalesEl = document.getElementById('stat-total-sales');
+    const totalContactsEl = document.getElementById('stat-total-contacts');
     const recentOrdersBody = document.getElementById('dashboard-recent-orders');
+    const recentSalesBody = document.getElementById('dashboard-recent-sales');
 
     if (!totalCarsEl) return;
 
     totalCarsEl.innerText = adminCarsData.length;
     totalOrdersEl.innerText = adminBookingsData.length;
+
+    if (totalSalesEl) {
+        totalSalesEl.innerText = adminSaleBikesData.length;
+    }
+    if (totalContactsEl) {
+        totalContactsEl.innerText = adminContactMessagesData.length;
+    }
 
     const activeBookings = adminBookingsData.filter(b => b.status !== 'ยกเลิก');
     const totalRevenue = activeBookings.reduce((sum, b) => sum + (parseInt(b.totalAmount) || 0), 0);
@@ -869,6 +879,7 @@ window.renderDashboardStats = function () {
     const pendingCount = adminBookingsData.filter(b => b.status === 'รอยืนยัน').length;
     pendingOrdersEl.innerText = pendingCount;
 
+    // Recent Orders Table
     if (recentOrdersBody) {
         const sorted = [...adminBookingsData].sort((a, b) => {
             const dateA = new Date(a.bookingDate || 0).getTime();
@@ -878,17 +889,17 @@ window.renderDashboardStats = function () {
         const recent = sorted.slice(0, 5);
 
         if (recent.length === 0) {
-            recentOrdersBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-secondary);">ยังไม่มีออเดอร์</td></tr>`;
+            recentOrdersBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-secondary);">ยังไม่มีออเดอร์ในขณะนี้</td></tr>`;
         } else {
             recentOrdersBody.innerHTML = recent.map(b => `
                 <tr>
                     <td style="font-weight: 600; font-size: 0.85rem; color: var(--primary);">${b.id}</td>
                     <td>
-                        <div style="font-weight: 500;">${b.customerName || 'N/A'}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary);">${b.customerPhone || ''}</div>
+                        <div style="font-weight: 500;">${escapeHtmlAdmin(b.customerName || 'N/A')}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">${escapeHtmlAdmin(b.customerPhone || '')}</div>
                     </td>
                     <td>
-                        <div style="font-weight: 500;">${b.carName}</div>
+                        <div style="font-weight: 500;">${escapeHtmlAdmin(b.carName || '')}</div>
                     </td>
                     <td style="font-weight: 600; color: var(--primary);">฿${parseInt(b.totalAmount || 0).toLocaleString()}</td>
                     <td>
@@ -900,7 +911,51 @@ window.renderDashboardStats = function () {
             `).join('');
         }
     }
-}
+
+    // Recent & Featured Sale Bikes Table (Requirement 2)
+    if (recentSalesBody) {
+        if (adminSaleBikesData.length === 0) {
+            recentSalesBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-secondary);">ยังไม่มีรายการรถขายในระบบ</td></tr>`;
+        } else {
+            const displaySales = adminSaleBikesData.slice(0, 5);
+            recentSalesBody.innerHTML = displaySales.map(bike => {
+                const images = (bike.images && Array.isArray(bike.images) && bike.images.length > 0)
+                    ? bike.images
+                    : [bike.image || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800'];
+                const mainImg = images[0];
+                const cashPrice = parseInt(bike.priceCash || 0).toLocaleString();
+                const downPrice = parseInt(bike.downPayment || 0).toLocaleString();
+                const downText = parseInt(bike.downPayment || 0) === 0 ? 'ฟรีดาวน์' : `฿${downPrice}`;
+                const isFeatured = bike.isFeatured !== false;
+
+                return `
+                    <tr>
+                        <td>
+                            <img src="${mainImg}" alt="${escapeHtmlAdmin(bike.name)}" style="width: 48px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid var(--surface-border);" onerror="this.src='https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800'">
+                        </td>
+                        <td style="font-weight: 600; color: var(--text-primary);">
+                            ${escapeHtmlAdmin(bike.name)}
+                        </td>
+                        <td style="font-weight: 700; color: #d97706;">฿${cashPrice}</td>
+                        <td style="font-weight: 600;">${downText}</td>
+                        <td style="font-size: 0.85rem; color: var(--text-secondary);">${escapeHtmlAdmin(bike.installment || '-')}</td>
+                        <td>
+                            <span style="cursor: pointer; padding: 0.2rem 0.55rem; border-radius: 12px; font-size: 0.72rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem; ${isFeatured ? 'background: #fef3c7; color: #b45309; border: 1px solid #fde68a;' : 'background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0;'}" onclick="toggleSaleFeatured('${bike.id}', ${!isFeatured})">
+                                <i class="fa-solid ${isFeatured ? 'fa-star' : 'fa-star-half-stroke'}"></i>
+                                ${isFeatured ? 'แนะนำ' : 'ทั่วไป'}
+                            </span>
+                        </td>
+                        <td style="text-align: right;">
+                            <button class="btn btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="editSaleBike('${bike.id}')">
+                                <i class="fa-solid fa-pen"></i> แก้ไข
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+};
 
 // ============================================
 // Category Management

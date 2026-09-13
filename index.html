@@ -47,7 +47,7 @@
 
         <!-- View: Home Page -->
         <section id="home" class="view active">
-            <!-- Hero Section -->
+            <!-- Hero Section (Upgraded with Dual Mode & Luxury Styling - Requirement 3) -->
             <div class="hero">
                 <img src="hero_desktop_premium.png" alt="Premium Car" class="hero-bg desktop-only">
                 <img src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800"
@@ -57,15 +57,35 @@
 
                 <div class="container hero-container">
                     <div class="hero-text">
-                        <h1 class="hero-title">เช่ารถง่ายๆ<br>ไปได้ทุกที่กับเรา</h1>
+                        <div class="luxury-hero-tag">
+                            <i class="fa-solid fa-crown" style="color: #fbbf24;"></i> GOTBIKE PREMIUM • บริการเช่ารถและขายรถมอเตอร์ไซค์คัดเกรด
+                        </div>
+                        <h1 class="hero-title">
+                            ขับขี่อย่างมั่นใจในทุกเส้นทาง<br>
+                            <span class="hero-gradient-text">เช่ารถง่าย หรือเป็นเจ้าของได้ทันที</span>
+                        </h1>
                         <p class="hero-subtitle">
-                            <span class="highlight">ราคาเริ่มต้นเพียง ฿300/วัน</span><br>
-                            สัมผัสประสบการณ์การเช่ารถระดับพรีเมียม รถใหม่ สะอาด ปลอดภัย มั่นใจทุกการเดินทาง
+                            <span class="highlight">เช่าเริ่มต้น ฿300/วัน • รถขายฟรีดาวน์ ผ่อนสบาย</span><br>
+                            สัมผัสประสบการณ์ระดับพรีเมียม รถใหม่ สะอาด ปลอดภัย ตรวจเช็ค 50 จุด มั่นใจทุกคัน
                         </p>
                     </div>
 
+                    <!-- Dual Service Mode Switcher -->
+                    <div class="service-switcher-wrapper">
+                        <div class="service-switcher">
+                            <button type="button" class="service-switch-tab active" id="hero-tab-rent" onclick="switchHeroSearchMode('rent')">
+                                <i class="fa-solid fa-car"></i> เช่ารถรายวัน-เดือน
+                            </button>
+                            <button type="button" class="service-switch-tab" id="hero-tab-sale" onclick="switchHeroSearchMode('sale')">
+                                <i class="fa-solid fa-motorcycle"></i> ซื้อรถ สด-ผ่อน
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search Bar Glass Panel -->
                     <div class="search-bar glass-panel">
-                        <div class="search-inputs">
+                        <!-- Rental Search Inputs -->
+                        <div class="search-inputs" id="hero-rent-inputs">
                             <div class="search-input-group">
                                 <label><i class="fa-regular fa-calendar"></i> วันรับรถ</label>
                                 <input type="datetime-local" class="form-input" id="pickup-date">
@@ -86,11 +106,79 @@
                                 </select>
                             </div>
                         </div>
-                        <button class="btn btn-primary search-submit" onclick="navigate('fleet')">
-                            <i class="fa-solid fa-magnifying-glass"></i> ค้นหารถที่คุณต้องการ
+
+                        <!-- Sale Bikes Search Inputs -->
+                        <div class="search-inputs" id="hero-sale-inputs" style="display: none;">
+                            <div class="search-input-group">
+                                <label><i class="fa-solid fa-money-bill-wave"></i> งบประมาณราคาสด</label>
+                                <select class="form-input" id="hero-sale-budget">
+                                    <option value="">ทุกระดับราคา</option>
+                                    <option value="under100k">ต่ำกว่า 100,000 บาท</option>
+                                    <option value="100k-150k">100,000 - 150,000 บาท</option>
+                                    <option value="150k-200k">150,000 - 200,000 บาท</option>
+                                    <option value="above200k">200,000 บาทขึ้นไป</option>
+                                </select>
+                            </div>
+                            <div class="search-input-group">
+                                <label><i class="fa-solid fa-hand-holding-dollar"></i> แผนเงินดาวน์</label>
+                                <select class="form-input" id="hero-sale-down">
+                                    <option value="">ทุกแผนเงินดาวน์</option>
+                                    <option value="zero">ฟรีดาวน์ (0 บาท)</option>
+                                    <option value="low">ดาวน์น้อย (ต่ำกว่า 10,000)</option>
+                                </select>
+                            </div>
+                            <div class="search-input-group">
+                                <label><i class="fa-solid fa-motorcycle"></i> รุ่นยอดนิยม</label>
+                                <select class="form-input" id="hero-sale-model">
+                                    <option value="">ทุกรุ่น / แบรนด์</option>
+                                    <option value="Forza">Honda Forza 350</option>
+                                    <option value="XMAX">Yamaha XMAX 300</option>
+                                    <option value="Vespa">Vespa Sprint</option>
+                                    <option value="ADV">Honda ADV 160</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <button class="btn btn-primary search-submit" id="hero-rent-submit" onclick="navigate('fleet')">
+                            <i class="fa-solid fa-magnifying-glass"></i> ค้นหารถเช่าที่คุณต้องการ
+                        </button>
+                        <button class="btn search-submit" id="hero-sale-submit" onclick="executeHeroSaleSearch()" style="display: none; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; font-weight: 700;">
+                            <i class="fa-solid fa-bolt"></i> ค้นหารถขายพร้อมส่งมอบ
                         </button>
                     </div>
+
+                    <!-- Floating Luxury Hero Stats Row -->
+                    <div class="hero-stats-row">
+                        <div class="hero-stat-card">
+                            <span class="hero-stat-num">500+</span>
+                            <span class="hero-stat-text">รถพร้อมส่งมอบ</span>
+                        </div>
+                        <div class="hero-stat-card">
+                            <span class="hero-stat-num">0 บาท</span>
+                            <span class="hero-stat-text">ฟรีดาวน์ ออกรถง่าย</span>
+                        </div>
+                        <div class="hero-stat-card">
+                            <span class="hero-stat-num">100%</span>
+                            <span class="hero-stat-text">ตรวจสภาพ 50 จุด</span>
+                        </div>
+                        <div class="hero-stat-card">
+                            <span class="hero-stat-num">4.9 ★</span>
+                            <span class="hero-stat-text">ลูกค้าประทับใจ 10,000+</span>
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Brand Showcase Bar -->
+            <div class="brand-showcase-bar">
+                <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);"><i class="fa-solid fa-shield-halved" style="color: var(--primary);"></i> แบรนด์ชั้นนำ:</span>
+                <a href="#sales" class="brand-pill" onclick="navigate('sales')"><i class="fa-solid fa-motorcycle" style="color: #ef4444;"></i> Honda</a>
+                <a href="#sales" class="brand-pill" onclick="navigate('sales')"><i class="fa-solid fa-motorcycle" style="color: #2563eb;"></i> Yamaha</a>
+                <a href="#sales" class="brand-pill" onclick="navigate('sales')"><i class="fa-solid fa-motorcycle" style="color: #10b981;"></i> Vespa</a>
+                <a href="#fleet" class="brand-pill" onclick="navigate('fleet')"><i class="fa-solid fa-car" style="color: #f59e0b;"></i> Toyota</a>
+                <a href="#fleet" class="brand-pill" onclick="navigate('fleet')"><i class="fa-solid fa-bolt" style="color: #e11d48;"></i> Tesla</a>
+                <a href="#fleet" class="brand-pill" onclick="navigate('fleet')"><i class="fa-solid fa-van-shuttle" style="color: #6366f1;"></i> Hyundai</a>
             </div>
 
             <!-- Featured Cars Section -->
@@ -132,6 +220,91 @@
                 </div>
             </div>
 
+            <!-- Interactive Financing / Installment Calculator Section (Requirement 3) -->
+            <div class="financing-calc-section">
+                <div class="container" style="max-width: 1060px;">
+                    <div style="text-align: center; max-width: 650px; margin: 0 auto 2rem;">
+                        <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.35rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem;">
+                            <i class="fa-solid fa-calculator"></i> วางแผนการเงินง่ายๆ
+                        </span>
+                        <h2 style="font-size: 2.2rem; margin: 0 0 0.5rem; color: white;">คำนวณค่างวดผ่อนรถมอเตอร์ไซค์</h2>
+                        <p style="color: #94a3b8; font-size: 0.95rem; margin: 0;">ประเมินงวดผ่อนต่อเดือนได้ทันที เลือกเงินดาวน์และจำนวนงวดที่ต้องการ ปรึกษาฟรีไม่มีข้อผูกมัด</p>
+                    </div>
+
+                    <div class="calc-box-grid">
+                        <!-- Left: Form Controls -->
+                        <div class="calc-form-card">
+                            <div class="form-group" style="margin-bottom: 1.25rem;">
+                                <label style="color: #e2e8f0; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">
+                                    <i class="fa-solid fa-motorcycle" style="color: #f59e0b; margin-right: 0.35rem;"></i> เลือกรถหรือระบุราคารถ (บาท)
+                                </label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <select id="calc-bike-select" class="form-input" style="flex: 1.5; background: #1e293b; color: white; border-color: #334155;" onchange="onCalcBikeSelectChange(this)">
+                                        <!-- Injected via JS -->
+                                    </select>
+                                    <input type="number" id="calc-price-input" class="form-input" style="flex: 1; background: #1e293b; color: white; border-color: #334155;" value="179000" oninput="recalcInstallment()">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 1.25rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <label style="color: #e2e8f0; font-size: 0.9rem; font-weight: 600;">
+                                        <i class="fa-solid fa-hand-holding-dollar" style="color: #f59e0b; margin-right: 0.35rem;"></i> เงินดาวน์: <span id="calc-down-display" style="color: #fbbf24; font-weight: 700;">฿0 (ฟรีดาวน์)</span>
+                                    </label>
+                                    <span id="calc-down-pct" style="font-size: 0.85rem; color: #94a3b8;">0%</span>
+                                </div>
+                                <input type="range" id="calc-down-slider" min="0" max="50" step="5" value="0" style="width: 100%; accent-color: #f59e0b; cursor: pointer;" oninput="onCalcDownSliderChange(this.value)">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+                                    <span>ฟรีดาวน์ (0%)</span>
+                                    <span>15%</span>
+                                    <span>30%</span>
+                                    <span>50%</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label style="color: #e2e8f0; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; display: block;">
+                                    <i class="fa-solid fa-calendar-days" style="color: #f59e0b; margin-right: 0.35rem;"></i> ระยะเวลาการผ่อนชำระ
+                                </label>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;" id="calc-terms-container">
+                                    <button type="button" class="calc-term-btn" onclick="selectCalcTerm(24, this)">24 เดือน</button>
+                                    <button type="button" class="calc-term-btn" onclick="selectCalcTerm(36, this)">36 เดือน</button>
+                                    <button type="button" class="calc-term-btn active" onclick="selectCalcTerm(48, this)">48 เดือน</button>
+                                    <button type="button" class="calc-term-btn" onclick="selectCalcTerm(60, this)">60 เดือน</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Result Preview -->
+                        <div class="calc-result-card">
+                            <span class="calc-result-badge"><i class="fa-solid fa-bolt"></i> ผลการคำนวณโดยประมาณ</span>
+                            <p style="color: #94a3b8; font-size: 0.85rem; margin: 0 0 0.5rem;">ค่างวดผ่อนชำระโดยประมาณ</p>
+                            <div class="calc-monthly-val" id="calc-result-monthly">฿3,850</div>
+                            <p style="font-size: 0.9rem; color: #cbd5e1; margin: 0 0 1.5rem;">ต่อเดือน (จำนวน <span id="calc-result-term-text">48</span> งวด)</p>
+
+                            <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 1.5rem; font-size: 0.85rem; text-align: left; display: flex; flex-direction: column; gap: 0.4rem;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #94a3b8;">ราคารถ:</span>
+                                    <strong id="calc-summary-price" style="color: white;">฿179,000</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #94a3b8;">เงินดาวน์:</span>
+                                    <strong id="calc-summary-down" style="color: #fbbf24;">฿0 (ฟรีดาวน์)</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #94a3b8;">ยอดจัดไฟแนนซ์:</span>
+                                    <strong id="calc-summary-loan" style="color: #38bdf8;">฿179,000</strong>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn btn-primary" onclick="consultLoanWithAdmin()" style="width: 100%; padding: 0.9rem; font-weight: 700; font-size: 1rem; border-radius: 12px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer;">
+                                <i class="fa-solid fa-headset"></i> ปรึกษาเงื่อนไขออกรถกับแอดมิน
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Why Us Section -->
             <div style="background-color: white; padding: 5rem 1.5rem;">
                 <div class="container">
@@ -140,6 +313,69 @@
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2.5rem;"
                         id="why-us-grid">
                         <!-- Injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Testimonials Section (Requirement 3) -->
+            <div class="testimonials-section">
+                <div class="container">
+                    <div style="text-align: center; max-width: 600px; margin: 0 auto;">
+                        <div style="display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(37, 99, 235, 0.1); color: var(--primary); padding: 0.3rem 0.85rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem;">
+                            <i class="fa-solid fa-star" style="color: #f59e0b;"></i> รีวิวจากลูกค้าจริง
+                        </div>
+                        <h2 class="section-title" style="margin-bottom: 0.5rem;">เสียงตอบรับจากลูกค้าที่ไว้วางใจ GOTBIKE</h2>
+                        <p style="color: var(--text-secondary); margin: 0;">เรามุ่งมั่นให้บริการระดับพรีเมียม ทั้งงานเช่าและงานขายรถมอเตอร์ไซค์คุณภาพ</p>
+                    </div>
+
+                    <div class="testimonial-grid">
+                        <div class="testimonial-card">
+                            <div>
+                                <div class="testimonial-stars">
+                                    <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                                </div>
+                                <p class="testimonial-text">"ออกรถ Forza 350 กับที่นี่ ประทับใจมากครับ อนุมัติไวมาก วันเดียวผ่านเลย ฟรีดาวน์จริง รถสภาพสวยกริ๊บเหมือนมือหนึ่ง แอดมินแนะนำดีมาก"</p>
+                            </div>
+                            <div class="testimonial-user">
+                                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150" class="testimonial-avatar" alt="Customer">
+                                <div>
+                                    <h4 class="testimonial-user-name">คุณธนกฤต ส.</h4>
+                                    <p class="testimonial-user-sub"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i> ซื้อรถ Honda Forza 350</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="testimonial-card">
+                            <div>
+                                <div class="testimonial-stars">
+                                    <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                                </div>
+                                <p class="testimonial-text">"เช่า Hyundai Staria พาครอบครัวไปเที่ยวพัทยา รถสะอาดมาก กลิ่นหอม คนขับสุภาพ ตรงต่อเวลา ระบบจองในเว็บสะดวกมาก จะกลับมาใช้บริการอีกแน่นอนค่ะ"</p>
+                            </div>
+                            <div class="testimonial-user">
+                                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150" class="testimonial-avatar" alt="Customer">
+                                <div>
+                                    <h4 class="testimonial-user-name">คุณพิมลดา ว.</h4>
+                                    <p class="testimonial-user-sub"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i> เช่ารถ Hyundai Staria VIP</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="testimonial-card">
+                            <div>
+                                <div class="testimonial-stars">
+                                    <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                                </div>
+                                <p class="testimonial-text">"เช่า XMAX 300 ขี่เที่ยวในเมือง รถแรง ขับสนุก สภาพดีเยี่ยม คืนรถง่าย แอดมินตอบแชทเร็วมาก ให้คำปรึกษาตลอด 24 ชั่วโมง ดีที่สุดในกรุงเทพฯ แล้วครับ"</p>
+                            </div>
+                            <div class="testimonial-user">
+                                <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150" class="testimonial-avatar" alt="Customer">
+                                <div>
+                                    <h4 class="testimonial-user-name">คุณกิตติศักดิ์ พ.</h4>
+                                    <p class="testimonial-user-sub"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i> เช่ารถ Yamaha XMAX 300</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -250,27 +486,76 @@
 
                 <!-- Logged In State -->
                 <div id="dashboard-user-state" style="display: none;">
-                    <div class="dashboard-tabs">
-                        <button class="tab-btn active" onclick="filterBookings('all', this)">การจองทั้งหมด</button>
-                        <button class="tab-btn" onclick="filterBookings('pending', this)">กำลังดำเนินการ</button>
-                        <button class="tab-btn" onclick="filterBookings('history', this)">ประวัติย้อนหลัง</button>
+                    <!-- Main Dashboard Switcher (Rentals vs Sales) -->
+                    <div class="dash-main-nav">
+                        <button id="dash-tab-rentals-btn" class="dash-main-tab active" onclick="switchDashboardMainTab('rentals')">
+                            <i class="fa-solid fa-car"></i> ประวัติการจองรถเช่าของฉัน
+                        </button>
+                        <button id="dash-tab-sales-btn" class="dash-main-tab" onclick="switchDashboardMainTab('sales')">
+                            <i class="fa-solid fa-tags"></i> รถขายแนะนำ & สิทธิพิเศษสำหรับคุณ
+                        </button>
                     </div>
 
-                    <div id="user-bookings-list" style="display: flex; flex-direction: column;">
-                        <!-- Bookings injected here by JS -->
+                    <!-- Panel 1: Rentals History -->
+                    <div id="dash-rentals-panel">
+                        <div class="dashboard-tabs">
+                            <button class="tab-btn active" onclick="filterBookings('all', this)">การจองทั้งหมด</button>
+                            <button class="tab-btn" onclick="filterBookings('pending', this)">กำลังดำเนินการ</button>
+                            <button class="tab-btn" onclick="filterBookings('history', this)">ประวัติย้อนหลัง</button>
+                        </div>
 
-                        <!-- Empty State Placeholder -->
-                        <div id="empty-bookings"
-                            style="text-align: center; padding: 5rem 2rem; background: var(--bg-white); border-radius: 20px; border: 2px dashed #e2e8f0; display: none;">
-                            <div
-                                style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #94a3b8;">
-                                <i class="fa-regular fa-calendar-xmark fa-2x"></i>
+                        <div id="user-bookings-list" style="display: flex; flex-direction: column;">
+                            <!-- Bookings injected here by JS -->
+
+                            <!-- Empty State Placeholder -->
+                            <div id="empty-bookings"
+                                style="text-align: center; padding: 5rem 2rem; background: var(--bg-white); border-radius: 20px; border: 2px dashed #e2e8f0; display: none;">
+                                <div
+                                    style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #94a3b8;">
+                                    <i class="fa-regular fa-calendar-xmark fa-2x"></i>
+                                </div>
+                                <h3 style="color: #1e293b; margin-bottom: 0.5rem;">ยังไม่มีรายการจองในขณะนี้</h3>
+                                <p style="color: #64748b; margin-bottom: 2rem;">ดูเหมือนว่าคุณจะยังไม่มีการจองรถ
+                                    ลองไปเลือกรถที่คุณชอบดูสิ</p>
+                                <button class="btn btn-primary" onclick="navigate('fleet')"
+                                    style="padding: 0.75rem 2rem;">ไปที่หน้ารถเช่า</button>
                             </div>
-                            <h3 style="color: #1e293b; margin-bottom: 0.5rem;">ยังไม่มีราการจองในขณะนี้</h3>
-                            <p style="color: #64748b; margin-bottom: 2rem;">ดูเหมือนว่าคุณจะยังไม่มีการจองรถ
-                                ลองไปเลือกรถที่คุณชอบดูสิ</p>
-                            <button class="btn btn-primary" onclick="navigate('fleet')"
-                                style="padding: 0.75rem 2rem;">ไปที่หน้ารถเช่า</button>
+                        </div>
+                    </div>
+
+                    <!-- Panel 2: Sale Bikes Dashboard -->
+                    <div id="dash-sales-panel" style="display: none;">
+                        <div class="dashboard-sale-highlight">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                                <div>
+                                    <span style="background: #fef3c7; color: #b45309; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem;">
+                                        <i class="fa-solid fa-crown"></i> สิทธิพิเศษเฉพาะสมาชิก GOTBIKE
+                                    </span>
+                                    <h3 style="margin: 0 0 0.35rem; color: #0f172a; font-size: 1.35rem;">ออกรถวันนี้! รับส่วนลดเงินสดสูงสุด 10,000 บาท หรือฟรีประกันภัยชั้น 1</h3>
+                                    <p style="margin: 0; color: #64748b; font-size: 0.9rem;">รถทุกคันผ่านการตรวจเช็คสภาพ 150 จุด พร้อมรับประกันเครื่องยนต์และเกียร์ 1 ปีเต็ม</p>
+                                </div>
+                                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                    <button class="btn btn-outline" onclick="navigate('sales')" style="border-color: #f59e0b; color: #b45309; font-weight: 600;">
+                                        <i class="fa-solid fa-list" style="margin-right: 0.35rem;"></i> ดูรถขายทั้งหมด
+                                    </button>
+                                    <button class="btn btn-primary" onclick="toggleChatWidget(); sendQuickChatMessage('สวัสดีครับ สนใจปรึกษาเรื่องซื้อรถผ่อน-ดาวน์ผ่านแดชบอร์ดครับ');" style="background: linear-gradient(135deg, #f59e0b, #d97706); border: none; font-weight: 700;">
+                                        <i class="fa-solid fa-comments" style="margin-right: 0.35rem;"></i> ปรึกษาไฟแนนซ์ด่วน
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                                <div>
+                                    <h3 style="margin: 0; font-size: 1.4rem; color: var(--text-primary);">รถขายแนะนำสำหรับคุณ (ยอดนิยม & พร้อมส่งมอบ)</h3>
+                                    <p style="margin: 0.25rem 0 0; color: var(--text-secondary); font-size: 0.875rem;">คลิกดูรายละเอียดรถ คำนวณค่างวด หรือติดต่อสอบถามฝ่ายขายได้ทันที</p>
+                                </div>
+                            </div>
+
+                            <div class="sale-grid" id="dash-sales-grid">
+                                <!-- Injected via JS -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -764,10 +1049,12 @@
         </div>
     </div>
 
-    <!-- Sale Bike Detail Modal -->
+    <!-- Sale Bike Detail Modal (Scrollable - Requirement 1) -->
     <div class="modal-overlay" id="saleDetailModal" onclick="if(event.target === this) toggleModal('saleDetailModal')">
-        <div class="modal sale-detail-modal" style="max-width: 680px; padding: 0; overflow: hidden; border-radius: 16px;">
-            <i class="fa-solid fa-xmark modal-close" onclick="toggleModal('saleDetailModal')" style="top: 1rem; right: 1rem; z-index: 10; background: rgba(0,0,0,0.5); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; backdrop-filter: blur(4px);"></i>
+        <div class="modal sale-detail-modal">
+            <button type="button" class="sale-modal-close-btn" onclick="toggleModal('saleDetailModal')" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
             
             <div class="sale-modal-content">
                 <!-- Gallery Section -->
