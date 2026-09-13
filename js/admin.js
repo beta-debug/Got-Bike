@@ -74,6 +74,10 @@ window.switchAdminView = function (viewId, clickedElement) {
         renderDashboardStats();
     } else if (viewId === 'categories-view') {
         renderCategories();
+    } else if (viewId === 'sales-view') {
+        renderAdminSalesTable();
+    } else if (viewId === 'contact-messages-view') {
+        renderAdminContactMessages();
     }
 };
 
@@ -95,16 +99,22 @@ const defaultCategoriesList = [
 ];
 
 let adminCarsData = (typeof carsData !== 'undefined') ? [...carsData] : [];
+let adminSaleBikesData = (typeof defaultSaleBikesData !== 'undefined') ? [...defaultSaleBikesData] : [];
 let adminBookingsData = [];
 let adminCategoriesData = [...defaultCategoriesList];
+let adminContactMessagesData = [];
+let currentContactFilter = 'all';
 let activeAdminChatKey = null;
 let adminChatMessagesListener = null;
+let activeModalBookingId = null;
+let activeContactDetailId = null;
 
 function initAdminData() {
     // Immediate pre-render with local/default data so user never sees a blank screen
     renderCategories();
     renderDashboardStats();
     populateCategoryDropdown();
+    renderAdminSalesTable();
 
     // 1. One-time Migration from localStorage to Firebase
     migrateToFirebaseIfNeeded();
@@ -160,6 +170,27 @@ function initAdminData() {
             document.getElementById('line-user-id').value = settings.lineUserId || '';
             if (settings.qrUrl) previewQR();
         }
+    });
+
+    // 8. Listen to Sale Bikes (maycar_sale_fleet)
+    db.ref('maycar_sale_fleet').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            adminSaleBikesData = Object.values(data);
+        } else if (typeof defaultSaleBikesData !== 'undefined' && defaultSaleBikesData.length > 0) {
+            adminSaleBikesData = [...defaultSaleBikesData];
+            defaultSaleBikesData.forEach(item => {
+                db.ref('maycar_sale_fleet').child(item.id).set(item);
+            });
+        }
+        renderAdminSalesTable();
+    });
+
+    // 9. Listen to Contact Messages (maycar_contact_messages)
+    db.ref('maycar_contact_messages').on('value', (snapshot) => {
+        const data = snapshot.val();
+        adminContactMessagesData = data ? Object.values(data) : [];
+        renderAdminContactMessages();
     });
 }
 
@@ -583,7 +614,7 @@ function formatTimeAgo(timestamp) {
     return `${days} วันที่แล้ว`;
 }
 
-// Bookings Management
+// Bookings Management (Requirement 3.4 - Mobile Friendly Compact Table)
 function renderAdminBookings(bookingsObj) {
     const tbody = document.getElementById('bookings-table-body');
     if (!tbody) return;
@@ -593,65 +624,172 @@ function renderAdminBookings(bookingsObj) {
     bookings.sort((a, b) => b.id.localeCompare(a.id));
 
     if (bookings.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; padding: 2rem; color: var(--text-secondary);">ยังไม่มีออเดอร์ในขณะนี้</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--text-secondary);">ยังไม่มีออเดอร์ในขณะนี้</td></tr>`;
         return;
     }
 
     tbody.innerHTML = bookings.map(b => `
         <tr>
-            <td style="font-weight: 500; font-size: 0.875rem;">${b.id}</td>
-            <td><img src="${b.carImage}" class="table-img"></td>
-            <td style="font-weight: 500;">${b.carName}</td>
+            <td>
+                <img src="${b.carImage || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800'}" class="table-img" style="width: 52px; height: 38px; object-fit: cover; border-radius: 6px; cursor: pointer;" onclick="openOrderDetailModal('${b.id}')">
+            </td>
+            <td>
+                <div style="font-weight: 600; font-size: 0.875rem; color: var(--text-primary); cursor: pointer;" onclick="openOrderDetailModal('${b.id}')">${escapeHtmlAdmin(b.carName || 'รถเช่า')}</div>
+                <span style="font-size: 0.72rem; color: var(--primary); font-weight: 700;">${b.id}</span>
+            </td>
             <td style="font-size: 0.8rem; line-height: 1.4;">
-                <strong>${b.customerName || 'N/A'}</strong><br>
-                <i class="fa-solid fa-phone" style="font-size: 0.7rem; width: 15px;"></i> ${b.customerPhone || '-'}<br>
-                <i class="fa-solid fa-id-card" style="font-size: 0.7rem; width: 15px;"></i> ${b.customerIdCard || '-'}
-            </td>
-            <td style="font-size: 0.8rem; line-height: 1.4; max-width: 150px;">
-                ${b.deliveryAddr ? `
-                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${b.deliveryAddr}">
-                        <i class="fa-solid fa-location-dot" style="color: var(--primary);"></i> ${b.deliveryAddr}
-                    </div>
-                    ${b.mapLink ? `<a href="${b.mapLink}" target="_blank" style="color: #2563eb; text-decoration: underline; font-size: 0.75rem;">ดูแผนที่ Google Maps</a>` : ''}
-                ` : '<span style="color: var(--text-secondary);">รับที่สาขา</span>'}
-            </td>
-            <td style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
-                <i class="fa-solid fa-arrow-right" style="color: #10b981; margin-right: 0.25rem;"></i> ${formatDisplayDate(b.pickupDate)}<br>
-                <i class="fa-solid fa-arrow-left" style="color: #ef4444; margin-right: 0.25rem;"></i> ${formatDisplayDate(b.returnDate)}
-            </td>
-            <td style="font-weight: 600; color: var(--primary);">฿${parseInt(b.totalAmount).toLocaleString()}</td>
-            <td>
-                ${b.paymentSlip ? `
-                    <div class="slip-thumb" onclick="openSlipModal('${b.paymentSlip}')" style="cursor: pointer; position: relative; width: 40px; height: 40px; border-radius: 4px; overflow: hidden; border: 1px solid var(--surface-border);">
-                        <img src="${b.paymentSlip}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;">
-                        <i class="fa-solid fa-eye" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 0.75rem; text-shadow: 0 0 4px rgba(0,0,0,0.5);"></i>
-                    </div>
-                ` : `
-                    <span style="font-size: 0.75rem; color: var(--text-secondary);">ไม่มีสลิป</span>
-                `}
+                <div style="font-weight: 600; color: var(--text-primary);">${escapeHtmlAdmin(b.customerName || 'ไม่ระบุชื่อ')}</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);"><i class="fa-solid fa-phone" style="font-size: 0.7rem; color: var(--primary);"></i> ${escapeHtmlAdmin(b.customerPhone || '-')}</div>
             </td>
             <td>
-                <span style="background: ${getStatusColor(b.status)}15; color: ${getStatusColor(b.status)}; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; border: 1px solid ${getStatusColor(b.status)}30;">
-                    ${b.status}
+                <span style="font-weight: 700; color: var(--primary); font-size: 0.95rem;">฿${parseInt(b.totalAmount || 0).toLocaleString()}</span>
+            </td>
+            <td>
+                <span style="background: ${getStatusColor(b.status)}15; color: ${getStatusColor(b.status)}; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; border: 1px solid ${getStatusColor(b.status)}35; display: inline-block;">
+                    ${b.status || 'รอยืนยัน'}
                 </span>
             </td>
-            <td style="text-align: right;">
-                <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
-                    <select class="form-input" style="padding: 0.3rem; font-size: 0.8rem; width: auto; display: inline-block;" onchange="updateBookingStatus('${b.id}', this.value)">
-                        <option value="รอยืนยัน" ${b.status === 'รอยืนยัน' ? 'selected' : ''}>รอยืนยัน</option>
-                        <option value="ยืนยันแล้ว" ${b.status === 'ยืนยันแล้ว' ? 'selected' : ''}>ยืนยันแล้ว</option>
-                        <option value="กำลังใช้งาน" ${b.status === 'กำลังใช้งาน' ? 'selected' : ''}>กำลังใช้งาน</option>
-                        <option value="เสร็จสิ้น" ${b.status === 'เสร็จสิ้น' ? 'selected' : ''}>เสร็จสิ้น</option>
-                        <option value="ยกเลิก" ${b.status === 'ยกเลิก' ? 'selected' : ''}>ยกเลิก</option>
-                    </select>
-                    <button class="btn btn-outline" onclick="deleteBooking('${b.id}')" style="padding: 0.3rem 0.6rem; color: #ff5252; border-color: #ff5252; font-size: 0.8rem;" title="ลบการจอง">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>
+            <td style="text-align: center;">
+                <button type="button" class="btn btn-detail-toggle" onclick="openOrderDetailModal('${b.id}')" title="ดูข้อมูลทั้งหมดแบบละเอียด">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
             </td>
         </tr>
     `).join('');
 }
+
+// Order Detail Modal (Vertical Mobile-Friendly Layout - Requirement 3.4)
+window.openOrderDetailModal = function (bookingId) {
+    const booking = adminBookingsData.find(b => String(b.id) === String(bookingId));
+    if (!booking) return;
+
+    activeModalBookingId = bookingId;
+
+    const modal = document.getElementById('orderDetailModal');
+    if (!modal) return;
+
+    // Header Info
+    const bkgIdEl = document.getElementById('od-booking-id');
+    const statusBadgeEl = document.getElementById('od-status-badge');
+    const createdDateEl = document.getElementById('od-created-date');
+
+    if (bkgIdEl) bkgIdEl.textContent = booking.id;
+    if (statusBadgeEl) {
+        statusBadgeEl.textContent = booking.status || 'รอยืนยัน';
+        statusBadgeEl.style.background = `${getStatusColor(booking.status)}15`;
+        statusBadgeEl.style.color = getStatusColor(booking.status);
+        statusBadgeEl.style.border = `1px solid ${getStatusColor(booking.status)}40`;
+    }
+    if (createdDateEl) {
+        createdDateEl.textContent = booking.bookingDate ? `วันที่ทำรายการ: ${formatDisplayDate(booking.bookingDate)}` : 'วันที่ทำรายการ: -';
+    }
+
+    // 1. Car Image
+    const carImg = document.getElementById('od-car-img');
+    if (carImg) {
+        carImg.src = booking.carImage || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800';
+    }
+
+    // 2. Car Name
+    const carNameEl = document.getElementById('od-car-name');
+    if (carNameEl) carNameEl.textContent = booking.carName || '-';
+
+    // 3. Customer Info
+    const custNameEl = document.getElementById('od-customer-name');
+    const custPhoneEl = document.getElementById('od-customer-phone');
+    const custPhoneLink = document.getElementById('od-customer-phone-link');
+    const custIdCardEl = document.getElementById('od-customer-id-card');
+    const custPermAddrEl = document.getElementById('od-customer-permanent-addr');
+
+    if (custNameEl) custNameEl.textContent = booking.customerName || 'ไม่ระบุ';
+    if (custPhoneEl) custPhoneEl.textContent = booking.customerPhone || '-';
+    if (custPhoneLink) custPhoneLink.href = booking.customerPhone ? `tel:${booking.customerPhone}` : '#';
+    if (custIdCardEl) custIdCardEl.textContent = booking.customerIdCard || '-';
+    if (custPermAddrEl) custPermAddrEl.textContent = booking.customerPermanentAddress || '-';
+
+    // 4. Delivery Address & Map Link
+    const deliveryAddrEl = document.getElementById('od-delivery-addr');
+    const mapLinkContainer = document.getElementById('od-map-link-container');
+    const mapLinkEl = document.getElementById('od-map-link');
+
+    if (deliveryAddrEl) {
+        deliveryAddrEl.textContent = booking.deliveryAddr ? booking.deliveryAddr : 'รับรถที่สาขา / ร้าน GOTBIKE';
+    }
+    if (mapLinkContainer && mapLinkEl) {
+        if (booking.mapLink) {
+            mapLinkContainer.style.display = 'block';
+            mapLinkEl.href = booking.mapLink;
+        } else {
+            mapLinkContainer.style.display = 'none';
+        }
+    }
+
+    // 5. Booking Dates
+    const pickupDateEl = document.getElementById('od-pickup-date');
+    const returnDateEl = document.getElementById('od-return-date');
+    if (pickupDateEl) pickupDateEl.textContent = booking.pickupDate ? formatDisplayDate(booking.pickupDate) : '-';
+    if (returnDateEl) returnDateEl.textContent = booking.returnDate ? formatDisplayDate(booking.returnDate) : '-';
+
+    // 6. Total Amount
+    const totalAmountEl = document.getElementById('od-total-amount');
+    if (totalAmountEl) totalAmountEl.textContent = `฿${parseInt(booking.totalAmount || 0).toLocaleString()}`;
+
+    // 7. Payment Slip
+    const slipContainer = document.getElementById('od-slip-container');
+    if (slipContainer) {
+        if (booking.paymentSlip) {
+            slipContainer.innerHTML = `
+                <div style="cursor: pointer; display: inline-block; text-align: center;" onclick="openSlipModal('${booking.paymentSlip}')">
+                    <img src="${booking.paymentSlip}" alt="Slip" style="max-width: 180px; max-height: 240px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                    <p style="font-size: 0.8rem; color: var(--primary); margin: 0.4rem 0 0; font-weight: 600;">
+                        <i class="fa-solid fa-magnifying-glass-plus"></i> คลิกเพื่อดูภาพสลิปขนาดใหญ่
+                    </p>
+                </div>
+            `;
+        } else {
+            slipContainer.innerHTML = `<span style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fa-solid fa-circle-exclamation"></i> ไม่พบหลักฐานการโอนเงิน</span>`;
+        }
+    }
+
+    // 8. Status Select
+    const statusSelect = document.getElementById('od-status-select');
+    if (statusSelect) {
+        statusSelect.value = booking.status || 'รอยืนยัน';
+    }
+
+    modal.style.display = 'flex';
+};
+
+window.closeOrderDetailModal = function () {
+    const modal = document.getElementById('orderDetailModal');
+    if (modal) modal.style.display = 'none';
+    activeModalBookingId = null;
+};
+
+window.saveStatusFromModal = function () {
+    if (!activeModalBookingId) return;
+    const statusSelect = document.getElementById('od-status-select');
+    const newStatus = statusSelect ? statusSelect.value : 'รอยืนยัน';
+
+    db.ref('maycar_bookings').child(activeModalBookingId).update({ status: newStatus }).then(() => {
+        alert(`อัปเดตสถานะการจอง ${activeModalBookingId} เป็น "${newStatus}" เรียบร้อยแล้ว`);
+        closeOrderDetailModal();
+    }).catch(err => {
+        alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
+    });
+};
+
+window.deleteBookingFromModal = function () {
+    if (!activeModalBookingId) return;
+    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบการจองรหัส ${activeModalBookingId}? ข้อมูลจะไม่สามารถกู้คืนได้`)) {
+        db.ref('maycar_bookings').child(activeModalBookingId).remove().then(() => {
+            alert(`ลบการจอง ${activeModalBookingId} เรียบร้อยแล้ว`);
+            closeOrderDetailModal();
+        }).catch(err => {
+            alert('เกิดข้อผิดพลาดในการลบ: ' + err.message);
+        });
+    }
+};
 
 function updateBookingStatus(bookingId, newStatus) {
     db.ref('maycar_bookings').child(bookingId).update({ status: newStatus }).then(() => {
@@ -1086,3 +1224,423 @@ function escapeHtmlAdmin(str) {
     div.appendChild(document.createTextNode(str));
     return div.innerHTML;
 }
+
+// ============================================
+// Sale Bikes Management (Requirement 3.1 & 3.2)
+// ============================================
+
+window.renderAdminSalesTable = function () {
+    const tbody = document.getElementById('sales-table-body');
+    if (!tbody) return;
+
+    if (adminSaleBikesData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2.5rem; color:var(--text-secondary);">ยังไม่มีรายการรถขาย กดปุ่ม "เพิ่มรถขายใหม่" ด้านบน</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = adminSaleBikesData.map(bike => {
+        const images = (bike.images && Array.isArray(bike.images) && bike.images.length > 0)
+            ? bike.images
+            : [bike.image || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800'];
+        const mainImg = images[0];
+        const cashPrice = parseInt(bike.priceCash || 0).toLocaleString();
+        const downPrice = parseInt(bike.downPayment || 0).toLocaleString();
+        const downText = parseInt(bike.downPayment || 0) === 0 ? 'ฟรีดาวน์' : `฿${downPrice}`;
+        const isFeatured = bike.isFeatured !== false;
+
+        return `
+            <tr>
+                <td>
+                    <div style="position: relative; width: 56px; height: 42px; border-radius: 6px; overflow: hidden; border: 1px solid var(--surface-border);">
+                        <img src="${mainImg}" alt="${escapeHtmlAdmin(bike.name)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800'">
+                        ${images.length > 1 ? `<span style="position: absolute; bottom: 2px; right: 2px; background: rgba(0,0,0,0.65); color: white; font-size: 0.65rem; padding: 0.1rem 0.3rem; border-radius: 4px;">${images.length}</span>` : ''}
+                    </div>
+                </td>
+                <td style="font-weight: 600; color: var(--text-primary);">
+                    ${escapeHtmlAdmin(bike.name)}
+                </td>
+                <td style="font-weight: 700; color: #d97706;">฿${cashPrice}</td>
+                <td style="font-weight: 600; color: var(--text-primary);">${downText}</td>
+                <td style="font-size: 0.85rem; color: var(--text-secondary);">${escapeHtmlAdmin(bike.installment || '-')}</td>
+                <td>
+                    <span style="cursor: pointer; padding: 0.25rem 0.65rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem; ${isFeatured ? 'background: #fef3c7; color: #b45309; border: 1px solid #fde68a;' : 'background: #f1f5f9; color: #94a3b8; border: 1px solid #e2e8f0;'}" onclick="toggleSaleFeatured('${bike.id}', ${!isFeatured})">
+                        <i class="fa-solid ${isFeatured ? 'fa-star' : 'fa-star-half-stroke'}"></i>
+                        ${isFeatured ? 'แนะนำหน้าแรก' : 'ทั่วไป'}
+                    </span>
+                </td>
+                <td style="text-align: right;">
+                    <div class="action-btns" style="justify-content: flex-end;">
+                        <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="editSaleBike('${bike.id}')" title="แก้ไข">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; color: #ff5252; border-color: #ff5252;" onclick="deleteSaleBike('${bike.id}')" title="ลบ">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.openAddSaleModal = function () {
+    const form = document.getElementById('saleForm');
+    if (form) form.reset();
+
+    const editIdEl = document.getElementById('edit-sale-id');
+    const titleEl = document.getElementById('sale-form-title');
+    if (editIdEl) editIdEl.value = '';
+    if (titleEl) titleEl.innerText = 'เพิ่มรถขายใหม่';
+
+    // Clear dynamic image rows & populate 1 default row
+    const list = document.getElementById('sale-image-inputs-list');
+    if (list) {
+        list.innerHTML = '';
+        addSaleImageInputRow('');
+    }
+    updateSalePreview();
+
+    switchAdminView('edit-sale-view');
+};
+
+window.editSaleBike = function (saleId) {
+    const bike = adminSaleBikesData.find(b => String(b.id) === String(saleId));
+    if (!bike) return;
+
+    document.getElementById('edit-sale-id').value = bike.id;
+    document.getElementById('sale-form-title').innerText = 'แก้ไขรถขาย: ' + bike.name;
+    document.getElementById('edit-sale-name').value = bike.name || '';
+    document.getElementById('edit-sale-price-cash').value = bike.priceCash || '';
+    document.getElementById('edit-sale-down-payment').value = bike.downPayment !== undefined ? bike.downPayment : 0;
+    document.getElementById('edit-sale-installment').value = bike.installment || '';
+    document.getElementById('edit-sale-details').value = bike.details || '';
+    document.getElementById('edit-sale-featured').checked = bike.isFeatured !== false;
+
+    const images = (bike.images && Array.isArray(bike.images) && bike.images.length > 0)
+        ? bike.images
+        : [bike.image || ''];
+
+    const list = document.getElementById('sale-image-inputs-list');
+    if (list) {
+        list.innerHTML = '';
+        images.forEach(url => addSaleImageInputRow(url));
+    }
+    updateSalePreview();
+
+    switchAdminView('edit-sale-view');
+};
+
+window.addSaleImageInputRow = function (urlValue = '') {
+    const list = document.getElementById('sale-image-inputs-list');
+    if (!list) return;
+
+    const row = document.createElement('div');
+    row.className = 'sale-img-row';
+    row.innerHTML = `
+        <input type="url" class="form-input sale-image-url-input" placeholder="https://example.com/bike.jpg" value="${urlValue}" oninput="updateSalePreview()">
+        <button type="button" class="sale-img-remove-btn" onclick="removeSaleImageInputRow(this)" title="ลบรูปนี้">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+    `;
+    list.appendChild(row);
+    updateSalePreview();
+};
+
+window.removeSaleImageInputRow = function (btn) {
+    const list = document.getElementById('sale-image-inputs-list');
+    if (!list) return;
+
+    const rows = list.querySelectorAll('.sale-img-row');
+    if (rows.length <= 1) {
+        alert('ต้องมีช่องใส่ URL รูปภาพอย่างน้อย 1 รูป');
+        return;
+    }
+
+    btn.closest('.sale-img-row').remove();
+    updateSalePreview();
+};
+
+window.updateSalePreview = function () {
+    const container = document.getElementById('sale-img-preview-container');
+    if (!container) return;
+
+    const inputs = document.querySelectorAll('.sale-image-url-input');
+    let firstValidUrl = '';
+    inputs.forEach(input => {
+        if (!firstValidUrl && input.value.trim()) {
+            firstValidUrl = input.value.trim();
+        }
+    });
+
+    if (firstValidUrl) {
+        container.innerHTML = `<img src="${firstValidUrl}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\\'padding:1rem; text-align:center; color:#ef4444;\\\'><i class=\\\'fa-solid fa-triangle-exclamation\\\'></i> ไม่สามารถโหลดรูปภาพได้</div>';">`;
+    } else {
+        container.innerHTML = `<i class="fa-solid fa-camera fa-3x" style="color: var(--text-secondary); margin-bottom: 0.5rem;"></i>`;
+    }
+};
+
+window.applyBulkSaleImages = function () {
+    const textarea = document.getElementById('sale-bulk-img-urls');
+    if (!textarea) return;
+
+    const lines = textarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) {
+        alert('กรุณากรอก URL อย่างน้อย 1 บรรทัด');
+        return;
+    }
+
+    const list = document.getElementById('sale-image-inputs-list');
+    if (!list) return;
+
+    // Remove existing empty rows
+    const rows = list.querySelectorAll('.sale-img-row');
+    rows.forEach(r => {
+        const input = r.querySelector('.sale-image-url-input');
+        if (input && !input.value.trim()) r.remove();
+    });
+
+    lines.forEach(url => addSaleImageInputRow(url));
+    textarea.value = '';
+    updateSalePreview();
+};
+
+window.saveSaleBike = function (e) {
+    if (e) e.preventDefault();
+
+    const id = document.getElementById('edit-sale-id').value;
+    const name = document.getElementById('edit-sale-name').value.trim();
+    const priceCash = parseInt(document.getElementById('edit-sale-price-cash').value) || 0;
+    const downPayment = parseInt(document.getElementById('edit-sale-down-payment').value) || 0;
+    const installment = document.getElementById('edit-sale-installment').value.trim();
+    const details = document.getElementById('edit-sale-details').value.trim();
+    const isFeatured = document.getElementById('edit-sale-featured').checked;
+
+    // Collect images
+    const imageInputs = document.querySelectorAll('.sale-image-url-input');
+    const images = [];
+    imageInputs.forEach(inp => {
+        const val = inp.value.trim();
+        if (val) images.push(val);
+    });
+
+    if (images.length === 0) {
+        alert('กรุณาใส่ URL รูปภาพอย่างน้อย 1 รูป');
+        return;
+    }
+
+    const bikeId = id || 'sale_' + Date.now();
+    const bikeData = {
+        id: bikeId,
+        name: name,
+        priceCash: priceCash,
+        downPayment: downPayment,
+        installment: installment,
+        details: details,
+        isFeatured: isFeatured,
+        image: images[0],
+        images: images,
+        status: 'available',
+        updatedAt: Date.now()
+    };
+
+    db.ref('maycar_sale_fleet').child(bikeId).set(bikeData).then(() => {
+        alert(id ? 'อัปเดตข้อมูลรถขายสำเร็จ' : 'เพิ่มรถขายใหม่สำเร็จ');
+        switchAdminView('sales-view', document.querySelector('.side-link[href="#sales"]'));
+    }).catch(err => {
+        alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
+    });
+};
+
+window.deleteSaleBike = function (saleId) {
+    const bike = adminSaleBikesData.find(b => String(b.id) === String(saleId));
+    const bikeName = bike ? bike.name : saleId;
+
+    if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบรถขาย "${bikeName}"?`)) {
+        db.ref('maycar_sale_fleet').child(saleId).remove().then(() => {
+            alert('ลบรถขายเรียบร้อยแล้ว');
+        }).catch(err => {
+            alert('เกิดข้อผิดพลาดในการลบ: ' + err.message);
+        });
+    }
+};
+
+window.toggleSaleFeatured = function (saleId, isFeatured) {
+    db.ref('maycar_sale_fleet').child(saleId).update({ isFeatured: isFeatured }).then(() => {
+        // Updated via real-time listener
+    });
+};
+
+
+// ============================================
+// Contact Messages Management (Requirement 3.3)
+// ============================================
+
+window.renderAdminContactMessages = function () {
+    const tbody = document.getElementById('contact-messages-table-body');
+    const sidebarBadge = document.getElementById('contact-sidebar-badge');
+    if (!tbody) return;
+
+    // Filter messages
+    let list = [...adminContactMessagesData];
+    list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    // Update unread / pending badge
+    const pendingCount = list.filter(m => m.status !== 'replied').length;
+    if (sidebarBadge) {
+        if (pendingCount > 0) {
+            sidebarBadge.style.display = 'inline-block';
+            sidebarBadge.textContent = pendingCount > 9 ? '9+' : pendingCount;
+        } else {
+            sidebarBadge.style.display = 'none';
+        }
+    }
+
+    if (currentContactFilter === 'pending') {
+        list = list.filter(m => m.status !== 'replied');
+    } else if (currentContactFilter === 'replied') {
+        list = list.filter(m => m.status === 'replied');
+    }
+
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2.5rem; color:var(--text-secondary);">ไม่พบข้อความติดต่อในหมวดหมู่นี้</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map(m => {
+        const isReplied = m.status === 'replied';
+        const msgSnippet = (m.message || '').length > 60 ? (m.message.substring(0, 60) + '...') : (m.message || '-');
+        const timeStr = m.timestamp ? formatChatTime(m.timestamp) : '-';
+
+        return `
+            <tr style="${!isReplied ? 'background: rgba(254, 243, 199, 0.2);' : ''}">
+                <td style="font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap;">
+                    ${timeStr}
+                </td>
+                <td style="font-size: 0.85rem;">
+                    <div style="font-weight: 600; color: var(--text-primary);">${escapeHtmlAdmin(m.customerName || 'ไม่ระบุชื่อ')}</div>
+                </td>
+                <td style="font-size: 0.8rem; line-height: 1.4;">
+                    <a href="${m.customerPhone ? `tel:${m.customerPhone}` : '#'}" style="color: var(--primary); text-decoration: none; display: block; font-weight: 600;">
+                        <i class="fa-solid fa-phone" style="font-size: 0.7rem; margin-right: 0.25rem;"></i>${escapeHtmlAdmin(m.customerPhone || '-')}
+                    </a>
+                    ${m.customerEmail && m.customerEmail !== '-' ? `
+                        <a href="mailto:${m.customerEmail}" style="color: var(--text-secondary); text-decoration: none; font-size: 0.75rem; display: block;">
+                            <i class="fa-solid fa-envelope" style="font-size: 0.7rem; margin-right: 0.25rem;"></i>${escapeHtmlAdmin(m.customerEmail)}
+                        </a>
+                    ` : ''}
+                </td>
+                <td>
+                    <span class="down-badge" style="background: #e0f2fe; color: #0369a1; font-size: 0.75rem;">
+                        ${escapeHtmlAdmin(m.subject || 'ติดต่อทั่วไป')}
+                    </span>
+                </td>
+                <td style="font-size: 0.85rem; color: #475569; max-width: 200px;">
+                    ${escapeHtmlAdmin(msgSnippet)}
+                </td>
+                <td>
+                    <span class="contact-status-badge ${isReplied ? 'contact-status-replied' : 'contact-status-pending'}">
+                        <i class="fa-solid ${isReplied ? 'fa-check' : 'fa-clock'}"></i>
+                        ${isReplied ? 'ติดต่อแล้ว' : 'ยังไม่ตอบ'}
+                    </span>
+                </td>
+                <td style="text-align: right;">
+                    <div class="action-btns" style="justify-content: flex-end;">
+                        <button class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.35rem;" onclick="openContactDetailModal('${m.id}')">
+                            <i class="fa-solid fa-envelope-open"></i> เปิดอ่าน
+                        </button>
+                        <button class="btn btn-outline" style="padding: 0.35rem 0.6rem; font-size: 0.8rem; color: #ff5252; border-color: #ff5252;" onclick="deleteContactMessage('${m.id}')" title="ลบข้อความ">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.filterContactMessages = function (filterType, btn) {
+    currentContactFilter = filterType;
+    document.querySelectorAll('.msg-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderAdminContactMessages();
+};
+
+window.openContactDetailModal = function (msgId) {
+    const msg = adminContactMessagesData.find(m => String(m.id) === String(msgId));
+    if (!msg) return;
+
+    activeContactDetailId = msgId;
+
+    const modal = document.getElementById('contactDetailModal');
+    if (!modal) return;
+
+    const timeEl = document.getElementById('cmd-time');
+    const nameEl = document.getElementById('cmd-name');
+    const phoneEl = document.getElementById('cmd-phone');
+    const phoneLink = document.getElementById('cmd-phone-link');
+    const emailEl = document.getElementById('cmd-email');
+    const emailLink = document.getElementById('cmd-email-link');
+    const subjectEl = document.getElementById('cmd-subject');
+    const messageEl = document.getElementById('cmd-message');
+    const replyInput = document.getElementById('cmd-reply-input');
+
+    if (timeEl) timeEl.textContent = msg.timestamp ? `เวลา: ${formatDisplayDate(msg.timestamp)} (${formatTimeAgo(msg.timestamp)})` : 'เวลา: -';
+    if (nameEl) nameEl.textContent = msg.customerName || 'ไม่ระบุ';
+    if (phoneEl) phoneEl.textContent = msg.customerPhone || '-';
+    if (phoneLink) phoneLink.href = msg.customerPhone ? `tel:${msg.customerPhone}` : '#';
+    if (emailEl) emailEl.textContent = msg.customerEmail || '-';
+    if (emailLink) emailLink.href = (msg.customerEmail && msg.customerEmail !== '-') ? `mailto:${msg.customerEmail}` : '#';
+    if (subjectEl) subjectEl.textContent = msg.subject || 'ติดต่อทั่วไป';
+    if (messageEl) messageEl.textContent = msg.message || '-';
+    if (replyInput) replyInput.value = msg.replyNotes || '';
+
+    // Mark as read in Firebase
+    if (!msg.isRead) {
+        db.ref('maycar_contact_messages').child(msgId).update({ isRead: true });
+    }
+
+    modal.style.display = 'flex';
+};
+
+window.closeContactDetailModal = function () {
+    const modal = document.getElementById('contactDetailModal');
+    if (modal) modal.style.display = 'none';
+    activeContactDetailId = null;
+};
+
+window.saveContactReply = function (markReplied) {
+    if (!activeContactDetailId) return;
+
+    const replyInput = document.getElementById('cmd-reply-input');
+    const replyNotes = replyInput ? replyInput.value.trim() : '';
+
+    const updates = {
+        replyNotes: replyNotes,
+        isRead: true
+    };
+    if (markReplied) {
+        updates.status = 'replied';
+        updates.repliedAt = Date.now();
+    }
+
+    db.ref('maycar_contact_messages').child(activeContactDetailId).update(updates).then(() => {
+        alert(markReplied ? 'บันทึกสถานะ "ติดต่อแล้ว" เรียบร้อย' : 'บันทึกร่างเรียบร้อย');
+        closeContactDetailModal();
+    }).catch(err => {
+        alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
+    });
+};
+
+window.deleteContactMessage = function (msgId) {
+    if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบข้อความติดต่อนี้?')) {
+        db.ref('maycar_contact_messages').child(msgId).remove().then(() => {
+            alert('ลบข้อความติดต่อเรียบร้อยแล้ว');
+            if (activeContactDetailId === msgId) {
+                closeContactDetailModal();
+            }
+        }).catch(err => {
+            alert('เกิดข้อผิดพลาดในการลบ: ' + err.message);
+        });
+    }
+};
+

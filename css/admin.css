@@ -759,3 +759,159 @@ body.admin-body {
         max-height: 250px;
     }
 }
+
+/* =============================================
+   Sale Bike Admin Management Styles
+   ============================================= */
+.sale-img-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.sale-img-row input {
+    flex: 1;
+}
+
+.sale-img-remove-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid #fca5a5;
+    background: #fef2f2;
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.sale-img-remove-btn:hover {
+    background: #ef4444;
+    color: white;
+}
+
+.sale-img-preview-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid #e2e8f0;
+}
+
+/* =============================================
+   Contact Messages Admin Styles
+   ============================================= */
+.msg-filter-btn {
+    transition: all 0.2s;
+}
+
+.msg-filter-btn.active {
+    background: var(--primary) !important;
+    color: white !important;
+    border-color: var(--primary) !important;
+}
+
+.contact-status-badge {
+    padding: 0.25rem 0.65rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.contact-status-pending {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+}
+
+.contact-status-replied {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+/* =============================================
+   Mobile-Friendly Order Management (Requirement 3.4)
+   ============================================= */
+.btn-detail-toggle {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.btn-detail-toggle:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: scale(1.06);
+    box-shadow: 0 3px 8px rgba(25, 118, 210, 0.25);
+}
+
+.order-vertical-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.od-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.od-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+}
+
+.od-card-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    #bookings-table th, 
+    #bookings-table td {
+        padding: 0.6rem 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    #bookings-table .table-img {
+        width: 44px;
+        height: 34px;
+    }
+
+    #orderDetailModal .modal {
+        width: 95% !important;
+        max-width: 95vw !important;
+        padding: 1.25rem !important;
+        margin: 1rem auto !important;
+        border-radius: 14px;
+    }
+}

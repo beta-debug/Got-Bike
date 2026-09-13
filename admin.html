@@ -59,7 +59,9 @@
             <div class="admin-top-nav">
                 <a href="javascript:void(0)" class="nav-item" onclick="switchAdminView('dashboard-view')"><i class="fa-solid fa-chart-pie" style="margin-right: 0.35rem;"></i> แดชบอร์ด</a>
                 <a href="javascript:void(0)" class="nav-item active" onclick="switchAdminView('cars-view')"><i class="fa-solid fa-car" style="margin-right: 0.35rem;"></i> จัดการรถเช่า</a>
+                <a href="javascript:void(0)" class="nav-item" onclick="switchAdminView('sales-view')"><i class="fa-solid fa-motorcycle" style="margin-right: 0.35rem;"></i> จัดการรถขาย</a>
                 <a href="javascript:void(0)" class="nav-item" onclick="switchAdminView('bookings-view')"><i class="fa-solid fa-clipboard-list" style="margin-right: 0.35rem;"></i> จัดการออเดอร์</a>
+                <a href="javascript:void(0)" class="nav-item" onclick="switchAdminView('contact-messages-view')"><i class="fa-solid fa-envelope-open-text" style="margin-right: 0.35rem;"></i> ข้อความติดต่อ</a>
             </div>
 
             <div class="admin-header-right">
@@ -110,8 +112,15 @@
                     <a href="#cars" class="side-link active" onclick="switchAdminView('cars-view', this)">
                         <i class="fa-solid fa-car side-icon"></i> จัดการรถเช่า
                     </a>
+                    <a href="#sales" class="side-link" onclick="switchAdminView('sales-view', this)">
+                        <i class="fa-solid fa-motorcycle side-icon"></i> จัดการรถขาย
+                    </a>
                     <a href="#bookings" class="side-link" onclick="switchAdminView('bookings-view', this)">
                         <i class="fa-solid fa-clipboard-list side-icon"></i> จัดการออเดอร์
+                    </a>
+                    <a href="#contact-messages" class="side-link" onclick="switchAdminView('contact-messages-view', this)">
+                        <i class="fa-solid fa-envelope-open-text side-icon"></i> ข้อความติดต่อ
+                        <span id="contact-sidebar-badge" class="chat-sidebar-badge" style="display:none; background: #ef4444;">0</span>
                     </a>
                     <a href="#payment" class="side-link" onclick="switchAdminView('payment-view', this)">
                         <i class="fa-solid fa-money-check-dollar side-icon"></i> ช่องทางชำระเงิน
@@ -220,6 +229,118 @@
                                 <!-- Injected via JS -->
                             </tbody>
                         </table>
+                    </div>
+                </section>
+
+                <!-- View: Manage Sale Bikes (Requirement 3.1 & 3.2) -->
+                <section id="sales-view" class="admin-view">
+                    <div class="view-header">
+                        <h2><i class="fa-solid fa-motorcycle" style="margin-right: 0.5rem; color: #f59e0b;"></i> จัดการรถขาย</h2>
+                        <button class="btn btn-primary" onclick="openAddSaleModal()"><i class="fa-solid fa-plus" style="margin-right: 0.5rem;"></i> เพิ่มรถขายใหม่</button>
+                    </div>
+
+                    <div class="data-table-container">
+                        <table class="data-table" id="sales-table">
+                            <thead>
+                                <tr>
+                                    <th>รูปรถ</th>
+                                    <th>รุ่นรถ</th>
+                                    <th>ราคาสด</th>
+                                    <th>เงินดาวน์</th>
+                                    <th>ค่างวดผ่อน</th>
+                                    <th>แนะนำหน้าแรก</th>
+                                    <th style="text-align: right;">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-table-body">
+                                <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-secondary);">กำลังโหลดข้อมูล...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- View: Add/Edit Sale Bike Form (Multi-Image Builder - Requirement 3.1 & 3.2) -->
+                <section id="edit-sale-view" class="admin-view">
+                    <div class="view-header">
+                        <h2><i class="fa-solid fa-pen-to-square" style="margin-right: 0.5rem; color: #f59e0b;"></i> <span id="sale-form-title">เพิ่ม/แก้ไขรถขาย</span></h2>
+                        <button class="btn btn-outline" onclick="switchAdminView('sales-view', document.querySelector('.side-link[href=\'#sales\']'))">ย้อนกลับ</button>
+                    </div>
+
+                    <div class="settings-card form-layout">
+                        <form id="saleForm" onsubmit="saveSaleBike(event)">
+                            <input type="hidden" id="edit-sale-id">
+
+                            <div class="form-grid">
+                                <!-- Multi-Image Column -->
+                                <div class="form-col img-upload-col" style="flex: 1.2;">
+                                    <label style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.5rem; display: block;">
+                                        <i class="fa-solid fa-images" style="color: #f59e0b; margin-right: 0.35rem;"></i> รูปภาพรถ (ใส่ได้หลายรูป) *
+                                    </label>
+                                    
+                                    <!-- Main Preview -->
+                                    <div class="img-preview" id="sale-img-preview-container" style="height: 180px; margin-bottom: 1rem; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #0f172a;">
+                                        <i class="fa-solid fa-camera fa-3x" style="color: var(--text-secondary); margin-bottom: 0.5rem;"></i>
+                                    </div>
+
+                                    <!-- Multiple Images URL List -->
+                                    <div id="sale-image-inputs-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                        <!-- Inputs dynamically populated via JS -->
+                                    </div>
+
+                                    <button type="button" class="btn btn-outline" onclick="addSaleImageInputRow('')" style="margin-top: 0.75rem; width: 100%; border-style: dashed; padding: 0.5rem;">
+                                        <i class="fa-solid fa-plus" style="margin-right: 0.4rem;"></i> เพิ่มรูปภาพอีก 1 รูป
+                                    </button>
+
+                                    <!-- Quick Batch Images Paste Option -->
+                                    <details style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
+                                        <summary style="cursor: pointer; font-weight: 500;">วางหลาย URL พร้อมกัน (คั่นด้วยบรรทัดใหม่)</summary>
+                                        <div style="margin-top: 0.5rem;">
+                                            <textarea id="sale-bulk-img-urls" class="form-input" rows="3" placeholder="https://...\nhttps://..." style="font-size: 0.8rem;"></textarea>
+                                            <button type="button" class="btn btn-outline" onclick="applyBulkSaleImages()" style="margin-top: 0.5rem; padding: 0.3rem 0.8rem; font-size: 0.8rem;">นำไปใส่ในรายการรูป</button>
+                                        </div>
+                                    </details>
+                                </div>
+
+                                <!-- Details Column -->
+                                <div class="form-col" style="flex: 1.8;">
+                                    <div class="form-group">
+                                        <label>รุ่นรถ / ชื่อรถ *</label>
+                                        <input type="text" id="edit-sale-name" class="form-input" placeholder="เช่น Honda Forza 350 RoadSync 2024" required>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group" style="flex: 1;">
+                                            <label>ราคาเงินสด (บาท) *</label>
+                                            <input type="number" id="edit-sale-price-cash" class="form-input" placeholder="เช่น 179000" required>
+                                        </div>
+                                        <div class="form-group" style="flex: 1;">
+                                            <label>เงินดาวน์ (บาท)</label>
+                                            <input type="number" id="edit-sale-down-payment" class="form-input" placeholder="0 ถ้าฟรีดาวน์">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>ค่างวดผ่อนต่อเดือน *</label>
+                                        <input type="text" id="edit-sale-installment" class="form-input" placeholder="เช่น 3,850 บาท/เดือน (48 งวด)" required>
+                                    </div>
+
+                                    <div class="form-group" style="margin-top: 1rem;">
+                                        <label>รายละเอียดรถ *</label>
+                                        <textarea id="edit-sale-details" class="form-input" rows="4" placeholder="ระบุสภาพรถ, เลขไมล์, เล่มทะเบียน, ภาษี พ.ร.บ., ของแต่ง, การรับประกัน..." required></textarea>
+                                    </div>
+
+                                    <div class="form-group" style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                        <input type="checkbox" id="edit-sale-featured" style="width: 18px; height: 18px; cursor: pointer;">
+                                        <label for="edit-sale-featured" style="cursor: pointer; margin: 0; font-weight: 500;">แสดงเป็น "รถขายแนะนำ" ในหน้าแรก</label>
+                                    </div>
+
+                                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                                        <button type="submit" class="btn btn-primary" style="flex: 2;"><i class="fa-solid fa-save" style="margin-right: 0.5rem;"></i> บันทึกข้อมูลรถขาย</button>
+                                        <button type="button" class="btn btn-outline" onclick="switchAdminView('sales-view', document.querySelector('.side-link[href=\'#sales\']'))" style="flex: 1;">ยกเลิก</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 </section>
 
@@ -392,16 +513,12 @@
                         <table class="data-table" id="bookings-table">
                             <thead>
                                 <tr>
-                                    <th>รหัสจอง</th>
                                     <th>รูปรถ</th>
                                     <th>ชื่อรถ</th>
                                     <th>ข้อมูลลูกค้า</th>
-                                    <th>ที่อยู่/แผนที่</th>
-                                    <th>วันที่จอง (รับ-คืน)</th>
                                     <th>ยอดรวม</th>
-                                    <th>หลักฐาน</th>
                                     <th>สถานะ</th>
-                                    <th style="text-align: right;">จัดการ</th>
+                                    <th style="text-align: center; width: 80px;">ข้อมูลเต็ม</th>
                                 </tr>
                             </thead>
                             <tbody id="bookings-table-body">
@@ -511,6 +628,37 @@
                     </div>
                 </section>
 
+                <!-- View: Contact Form Messages (Requirement 3.3) -->
+                <section id="contact-messages-view" class="admin-view">
+                    <div class="view-header">
+                        <h2><i class="fa-solid fa-envelope-open-text" style="margin-right: 0.5rem; color: #3b82f6;"></i> ข้อความติดต่อจากลูกค้า (แบบฟอร์ม)</h2>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-outline msg-filter-btn active" onclick="filterContactMessages('all', this)" style="padding: 0.35rem 0.8rem; font-size: 0.85rem;">ทั้งหมด</button>
+                            <button class="btn btn-outline msg-filter-btn" onclick="filterContactMessages('pending', this)" style="padding: 0.35rem 0.8rem; font-size: 0.85rem;">ยังไม่ตอบ</button>
+                            <button class="btn btn-outline msg-filter-btn" onclick="filterContactMessages('replied', this)" style="padding: 0.35rem 0.8rem; font-size: 0.85rem;">ตอบแล้ว</button>
+                        </div>
+                    </div>
+
+                    <div class="data-table-container">
+                        <table class="data-table" id="contact-messages-table">
+                            <thead>
+                                <tr>
+                                    <th>วันที่/เวลา</th>
+                                    <th>ลูกค้า</th>
+                                    <th>ช่องทางติดต่อ</th>
+                                    <th>เรื่องที่ติดต่อ</th>
+                                    <th>ข้อความ</th>
+                                    <th>สถานะ</th>
+                                    <th style="text-align: right;">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contact-messages-table-body">
+                                <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-secondary);">กำลังโหลดข้อความ...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
             </main>
         </div>
     </div>
@@ -530,6 +678,173 @@
                         style="display: inline-block;">
                         <i class="fa-solid fa-download" style="margin-right: 0.5rem;"></i> ดาวน์โหลดรูปภาพ
                     </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Detail Modal (Vertical Mobile-Friendly Layout - Requirement 3.4) -->
+    <div id="orderDetailModal" class="admin-login-overlay" style="display: none; z-index: 2100; background: rgba(0,0,0,0.8); overflow-y: auto;" onclick="if(event.target === this) closeOrderDetailModal()">
+        <div class="modal" style="max-width: 560px; max-height: 90vh; overflow-y: auto; position: relative; padding: 2rem; border-radius: 16px; margin: auto;" onclick="event.stopPropagation()">
+            <i class="fa-solid fa-xmark modal-close" onclick="closeOrderDetailModal()" style="top: 1.25rem; right: 1.25rem; font-size: 1.25rem; cursor: pointer; color: var(--text-secondary);"></i>
+            
+            <div style="border-bottom: 1px solid var(--surface-border); padding-bottom: 1rem; margin-bottom: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="od-booking-id" style="font-weight: 800; font-size: 1.1rem; color: var(--primary);">BKG-XXXX</span>
+                    <span id="od-status-badge" style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">สถานะ</span>
+                </div>
+                <p id="od-created-date" style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.35rem 0 0;">วันที่ทำรายการ: -</p>
+            </div>
+
+            <!-- Vertical Stack Content (Requirement 3.4) -->
+            <div class="order-vertical-detail" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- 1. รูปภาพรถ -->
+                <div class="od-section">
+                    <label class="od-label"><i class="fa-solid fa-image" style="color: var(--primary); margin-right: 0.35rem;"></i> รูปภาพรถ</label>
+                    <div style="border-radius: 10px; overflow: hidden; height: 180px; background: #0f172a;">
+                        <img id="od-car-img" src="" alt="Car" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                </div>
+
+                <!-- 2. ชื่อรถ -->
+                <div class="od-section">
+                    <label class="od-label"><i class="fa-solid fa-car" style="color: var(--primary); margin-right: 0.35rem;"></i> ชื่อรถ</label>
+                    <div id="od-car-name" style="font-weight: 700; font-size: 1.15rem; color: var(--text-primary);">-</div>
+                </div>
+
+                <!-- 3. ข้อมูลลูกค้า -->
+                <div class="od-section">
+                    <label class="od-label"><i class="fa-solid fa-user" style="color: var(--primary); margin-right: 0.35rem;"></i> ข้อมูลลูกค้า</label>
+                    <div class="od-card-box">
+                        <div style="margin-bottom: 0.35rem;"><strong>ชื่อ:</strong> <span id="od-customer-name">-</span></div>
+                        <div style="margin-bottom: 0.35rem;">
+                            <strong>เบอร์โทร:</strong> 
+                            <a id="od-customer-phone-link" href="" style="color: var(--primary); text-decoration: underline; font-weight: 600;">
+                                <span id="od-customer-phone">-</span> <i class="fa-solid fa-phone" style="font-size: 0.75rem;"></i>
+                            </a>
+                        </div>
+                        <div style="margin-bottom: 0.35rem;"><strong>เลขบัตรประชาชน:</strong> <span id="od-customer-id-card">-</span></div>
+                        <div><strong>ที่อยู่ตามบัตร:</strong> <span id="od-customer-permanent-addr">-</span></div>
+                    </div>
+                </div>
+
+                <!-- 4. ที่อยู่/แผนที่ -->
+                <div class="od-section">
+                    <label class="od-label"><i class="fa-solid fa-location-dot" style="color: var(--primary); margin-right: 0.35rem;"></i> ที่อยู่/แผนที่</label>
+                    <div class="od-card-box">
+                        <div id="od-delivery-addr" style="margin-bottom: 0.5rem; line-height: 1.4;">-</div>
+                        <div id="od-map-link-container">
+                            <a id="od-map-link" href="#" target="_blank" class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                <i class="fa-solid fa-map-location-dot" style="color: #2563eb;"></i> เปิดแผนที่ Google Maps
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. วันที่จอง (รับ-คืน) -->
+                <div class="od-section">
+                    <label class="od-label"><i class="fa-solid fa-calendar-days" style="color: var(--primary); margin-right: 0.35rem;"></i> วันที่จอง (รับ-คืน)</label>
+                    <div class="od-card-box" style="display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+                        <div>
+                            <span style="display: block; font-size: 0.75rem; color: #10b981; font-weight: 600;"><i class="fa-solid fa-arrow-right"></i> วันรับรถ</span>
+                            <span id="od-pickup-date" style="font-weight: 600; font-size: 0.9rem;">-</span>
+                        </div>
+                        <div>
+                            <span style="display: block; font-size: 0.75rem; color: #ef4444; font-weight: 600;"><i class="fa-solid fa-arrow-left"></i> วันคืนรถ</span>
+                            <span id="od-return-date" style="font-weight: 600; font-size: 0.9rem;">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. ยอด -->
+                <div class="od-section">
+                    <label class="od-label"><i class="fa-solid fa-baht-sign" style="color: var(--primary); margin-right: 0.35rem;"></i> ยอดรวม</label>
+                    <div class="od-card-box" style="background: rgba(25, 118, 210, 0.05); border-color: rgba(25, 118, 210, 0.2);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 600;">ยอดชำระสุทธิ:</span>
+                            <span id="od-total-amount" style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">฿0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. หลักฐาน -->
+                <div class="od-section">
+                    <label class="od-label"><i class="fa-solid fa-receipt" style="color: var(--primary); margin-right: 0.35rem;"></i> หลักฐานการโอนเงิน (สลิป)</label>
+                    <div id="od-slip-container" style="text-align: center;">
+                        <!-- Slip preview injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Action: Status Change and Delete -->
+                <div class="od-section" style="border-top: 1px solid var(--surface-border); padding-top: 1.25rem;">
+                    <label class="od-label"><i class="fa-solid fa-sliders" style="color: var(--primary); margin-right: 0.35rem;"></i> อัปเดตสถานะออเดอร์</label>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                        <select id="od-status-select" class="form-input" style="flex: 2;">
+                            <option value="รอยืนยัน">รอยืนยัน</option>
+                            <option value="ยืนยันแล้ว">ยืนยันแล้ว</option>
+                            <option value="กำลังใช้งาน">กำลังใช้งาน</option>
+                            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                            <option value="ยกเลิก">ยกเลิก</option>
+                        </select>
+                        <button type="button" class="btn btn-primary" onclick="saveStatusFromModal()" style="flex: 1;">
+                            บันทึก
+                        </button>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; gap: 0.5rem;">
+                        <button type="button" class="btn btn-outline" onclick="deleteBookingFromModal()" style="color: #ef4444; border-color: #ef4444; font-size: 0.85rem;">
+                            <i class="fa-solid fa-trash" style="margin-right: 0.35rem;"></i> ลบออเดอร์
+                        </button>
+                        <button type="button" class="btn btn-outline" onclick="closeOrderDetailModal()" style="font-size: 0.85rem;">
+                            ปิดหน้าต่าง
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Message Detail Modal (Requirement 3.3) -->
+    <div id="contactDetailModal" class="admin-login-overlay" style="display: none; z-index: 2100; background: rgba(0,0,0,0.8);" onclick="if(event.target === this) closeContactDetailModal()">
+        <div class="modal" style="max-width: 540px; position: relative; padding: 2rem; border-radius: 16px; margin: auto;" onclick="event.stopPropagation()">
+            <i class="fa-solid fa-xmark modal-close" onclick="closeContactDetailModal()" style="top: 1.25rem; right: 1.25rem; font-size: 1.25rem; cursor: pointer; color: var(--text-secondary);"></i>
+            
+            <h3 style="margin: 0 0 0.25rem; font-size: 1.3rem;"><i class="fa-solid fa-envelope-open-text" style="color: #3b82f6; margin-right: 0.5rem;"></i> รายละเอียดข้อความติดต่อ</h3>
+            <p id="cmd-time" style="font-size: 0.8rem; color: var(--text-secondary); margin: 0 0 1.25rem;">เวลา: -</p>
+
+            <div class="od-card-box" style="margin-bottom: 1rem;">
+                <div style="margin-bottom: 0.35rem;"><strong>ชื่อผู้ติดต่อ:</strong> <span id="cmd-name">-</span></div>
+                <div style="margin-bottom: 0.35rem;">
+                    <strong>เบอร์โทรศัพท์:</strong> 
+                    <a id="cmd-phone-link" href="" style="color: var(--primary); text-decoration: underline; font-weight: 600;">
+                        <span id="cmd-phone">-</span> <i class="fa-solid fa-phone" style="font-size: 0.75rem;"></i>
+                    </a>
+                </div>
+                <div style="margin-bottom: 0.35rem;">
+                    <strong>อีเมล:</strong> 
+                    <a id="cmd-email-link" href="" style="color: var(--primary); text-decoration: underline;">
+                        <span id="cmd-email">-</span>
+                    </a>
+                </div>
+                <div><strong>เรื่องที่ติดต่อ:</strong> <span id="cmd-subject" class="down-badge">-</span></div>
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">ข้อความจากลูกค้า:</label>
+                <div id="cmd-message" style="background: #f8fafc; border: 1px solid var(--surface-border); border-radius: 8px; padding: 1rem; font-size: 0.95rem; line-height: 1.5; white-space: pre-line;">-</div>
+            </div>
+
+            <div style="border-top: 1px solid var(--surface-border); padding-top: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">บันทึกการตอบกลับ / ดำเนินการ:</label>
+                <textarea id="cmd-reply-input" class="form-input" rows="3" placeholder="ระบุผลการโทรติดต่อ หรือบันทึกข้อความตอบกลับ..."></textarea>
+
+                <div style="display: flex; gap: 0.75rem; margin-top: 1rem;">
+                    <button type="button" class="btn btn-primary" onclick="saveContactReply(true)" style="flex: 2;">
+                        <i class="fa-solid fa-check-circle" style="margin-right: 0.35rem;"></i> บันทึกว่า "ติดต่อแล้ว"
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="saveContactReply(false)" style="flex: 1;">
+                        บันทึกร่าง
+                    </button>
                 </div>
             </div>
         </div>

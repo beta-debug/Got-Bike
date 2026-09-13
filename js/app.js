@@ -1,37 +1,80 @@
 let currentFleet = [];
+let currentSaleFleet = (typeof defaultSaleBikesData !== 'undefined') ? [...defaultSaleBikesData] : [];
+let currentSaleDetailBike = null;
 let cachedUserBookings = [];
+
+// Local cache of registered users
+let localUsersCache = {};
+try {
+  localUsersCache = JSON.parse(localStorage.getItem('maycar_registered_users') || '{}');
+} catch (e) {
+  localUsersCache = {};
+}
+
+function sanitizeEmailKey(email) {
+  return (email || '').toLowerCase().trim().replace(/[.#$[\]]/g, '_');
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Listen to Fleet changes in real-time
-  db.ref('maycar_fleet').on('value', (snapshot) => {
-    const data = snapshot.val();
-    currentFleet = data ? Object.values(data) : [];
-    renderFeaturedCars();
-    renderFleetGrid();
-  });
+  if (typeof db !== 'undefined' && db) {
+    db.ref('maycar_fleet').on('value', (snapshot) => {
+      const data = snapshot.val();
+      currentFleet = data ? Object.values(data) : [];
+      renderFeaturedCars();
+      renderFleetGrid();
+    });
 
-  // Listen to Categories in real-time
-  db.ref('maycar_categories').on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      const cats = Object.values(data);
-      categoryFilters = [
-        { id: 'all', label: 'ทั้งหมด', icon: 'fa-table-cells' },
-        ...cats.map(c => ({
-          id: c.value,
-          label: c.label,
-          icon: c.icon ? (c.icon.startsWith('fa-') ? c.icon : 'fa-' + c.icon) : 'fa-car'
-        }))
-      ];
-      initFleetFilters();
-    }
-  });
+    // Listen to Sale Fleet in real-time
+    db.ref('maycar_sale_fleet').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        currentSaleFleet = Object.values(data);
+      } else if (typeof defaultSaleBikesData !== 'undefined' && defaultSaleBikesData.length > 0) {
+        currentSaleFleet = [...defaultSaleBikesData];
+        // Seed default sale bikes into Firebase once if empty
+        defaultSaleBikesData.forEach(item => {
+          db.ref('maycar_sale_fleet').child(item.id).set(item);
+        });
+      }
+      renderFeaturedSaleCars();
+      renderSaleFleet();
+    });
+
+    // Listen to Registered Users in real-time
+    db.ref('maycar_users').on('value', (snapshot) => {
+      const val = snapshot.val();
+      if (val) {
+        localUsersCache = { ...localUsersCache, ...val };
+        localStorage.setItem('maycar_registered_users', JSON.stringify(localUsersCache));
+      }
+    });
+
+    // Listen to Categories in real-time
+    db.ref('maycar_categories').on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const cats = Object.values(data);
+        categoryFilters = [
+          { id: 'all', label: 'ทั้งหมด', icon: 'fa-table-cells' },
+          ...cats.map(c => ({
+            id: c.value,
+            label: c.label,
+            icon: c.icon ? (c.icon.startsWith('fa-') ? c.icon : 'fa-' + c.icon) : 'fa-car'
+          }))
+        ];
+        initFleetFilters();
+      }
+    });
+  }
 
   handleRouting();
   updateAuthUI();
   initFleetFilters();
+  renderFeaturedSaleCars();
+  renderSaleFleet();
 
-  // 2. Global Event Listeners — use wrapper to always call the LATEST handleRouting
+  // 2. Global Event Listeners
   window.addEventListener('hashchange', () => handleRouting());
   window.addEventListener('scroll', handleScroll);
 });
@@ -58,9 +101,14 @@ function handleRouting() {
     activeLink.classList.add('active');
   }
 
-  // Trigger dashboard data load when navigating to dashboard
+  // View specific triggers
   if (hash === '#dashboard' && typeof renderDashboard === 'function') {
     renderDashboard();
+  } else if (hash === '#sales') {
+    renderSaleFleet();
+  } else if (hash === '#home') {
+    renderFeaturedCars();
+    renderFeaturedSaleCars();
   }
 }
 
@@ -395,34 +443,139 @@ window.switchModal = function (closeId, openId) {
   if (openEl) openEl.classList.add('active');
 };
 
-// Auth Form Handlers
+// Auth Form Handlers - Verified Authentication
 window.handleLogin = function (e) {
-  e.preventDefault();
-  // Mock login success
-  localStorage.setItem('isLoggedIn', 'true');
-  localStorage.setItem('userName', document.getElementById('login-email').value);
+  if (e) e.preventDefault();
+  const emailInput = document.getElementById('login-email');
+  const passInput = document.getElementById('login-password');
+  const email = (emailInput ? emailInput.value : '').toLowerCase().trim();
+  const password = passInput ? passInput.value : '';
 
-  updateAuthUI();
-  toggleModal('loginModal');
-  alert('เข้าสู่ระบบสำเร็จ!');
+  if (!email || !password) {
+    alert('กรุณากรอกอีเมลและรหัสผ่าน');
+    return;
+  }
+
+  const userKey = sanitizeEmailKey(email);
+
+  function executeLogin(userData) {
+    if (!userData) {
+      alert('ไม่พบบัญชีผู้ใช้นี้ในระบบ กรุณาสมัครสมาชิกก่อนเข้าสู่ระบบ');
+      switchModal('loginModal', 'registerModal');
+      const regEmail = document.getElementById('reg-email');
+      if (regEmail) regEmail.value = email;
+      return;
+    }
+
+    if (userData.password && userData.password !== password) {
+      alert('รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบและลองใหม่อีกครั้ง');
+      return;
+    }
+
+    // Success login
+    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('userName', userData.email || email);
+    localStorage.setItem('userFullName', userData.fullName || '');
+    localStorage.setItem('userPhone', userData.phone || '');
+    localStorage.setItem('userIdCard', userData.idCard || '');
+    localStorage.setItem('userPermanentAddress', userData.permanentAddress || '');
+
+    updateAuthUI();
+    toggleModal('loginModal');
+    alert(`เข้าสู่ระบบสำเร็จ! ยินดีต้อนรับคุณ ${userData.fullName || email}`);
+
+    if (window.location.hash === '#dashboard' && typeof renderDashboard === 'function') {
+      renderDashboard();
+    }
+  }
+
+  // Check local cache first for instant response
+  if (localUsersCache && localUsersCache[userKey]) {
+    executeLogin(localUsersCache[userKey]);
+    return;
+  }
+
+  // Check Firebase Realtime DB
+  if (typeof db !== 'undefined' && db) {
+    db.ref('maycar_users').child(userKey).once('value').then(snapshot => {
+      const val = snapshot.val();
+      if (val) {
+        localUsersCache[userKey] = val;
+        localStorage.setItem('maycar_registered_users', JSON.stringify(localUsersCache));
+        executeLogin(val);
+      } else {
+        executeLogin(null);
+      }
+    }).catch(err => {
+      console.warn('Firebase login lookup error:', err);
+      executeLogin(null);
+    });
+  } else {
+    executeLogin(null);
+  }
 };
 
 window.handleRegister = function (e) {
-  e.preventDefault();
-  const fullName = document.getElementById('reg-name').value;
-  const email = document.getElementById('reg-email').value;
+  if (e) e.preventDefault();
+  const fullName = (document.getElementById('reg-name') ? document.getElementById('reg-name').value : '').trim();
+  const email = (document.getElementById('reg-email') ? document.getElementById('reg-email').value : '').toLowerCase().trim();
+  const password = document.getElementById('reg-password') ? document.getElementById('reg-password').value : '';
+  const idCard = (document.getElementById('reg-id-card') ? document.getElementById('reg-id-card').value : '').trim();
+  const phone = (document.getElementById('reg-phone') ? document.getElementById('reg-phone').value : '').trim();
+  const permanentAddress = (document.getElementById('reg-permanent-address') ? document.getElementById('reg-permanent-address').value : '').trim();
 
-  // Mock register success and auto login
+  if (!fullName || !email || !password) {
+    alert('กรุณากรอกชื่อ-นามสกุล, อีเมล และรหัสผ่านให้ครบถ้วน');
+    return;
+  }
+
+  const userKey = sanitizeEmailKey(email);
+
+  // Check if email already registered
+  if (localUsersCache && localUsersCache[userKey]) {
+    alert('อีเมลนี้เคยลงทะเบียนไว้แล้ว กรุณาเข้าสู่ระบบ');
+    switchModal('registerModal', 'loginModal');
+    const loginEmailInput = document.getElementById('login-email');
+    if (loginEmailInput) loginEmailInput.value = email;
+    return;
+  }
+
+  const newUser = {
+    fullName: fullName,
+    email: email,
+    password: password,
+    idCard: idCard,
+    phone: phone,
+    permanentAddress: permanentAddress,
+    createdAt: Date.now()
+  };
+
+  // Save to Firebase
+  if (typeof db !== 'undefined' && db) {
+    db.ref('maycar_users').child(userKey).set(newUser).catch(err => {
+      console.warn('Firebase register save error:', err);
+    });
+  }
+
+  // Update local cache
+  localUsersCache[userKey] = newUser;
+  localStorage.setItem('maycar_registered_users', JSON.stringify(localUsersCache));
+
+  // Set active session
   localStorage.setItem('isLoggedIn', 'true');
   localStorage.setItem('userName', email);
   localStorage.setItem('userFullName', fullName);
-  localStorage.setItem('userPhone', document.getElementById('reg-phone').value);
-  localStorage.setItem('userIdCard', document.getElementById('reg-id-card').value);
-  localStorage.setItem('userPermanentAddress', document.getElementById('reg-permanent-address').value);
+  localStorage.setItem('userPhone', phone);
+  localStorage.setItem('userIdCard', idCard);
+  localStorage.setItem('userPermanentAddress', permanentAddress);
 
   updateAuthUI();
   toggleModal('registerModal');
-  alert('สมัครสมาชิกสำเร็จ!');
+  alert(`สมัครสมาชิกสำเร็จ! ยินดีต้อนรับคุณ ${fullName}`);
+
+  if (window.location.hash === '#dashboard' && typeof renderDashboard === 'function') {
+    renderDashboard();
+  }
 };
 
 window.handleLogout = function () {
@@ -434,6 +587,10 @@ window.handleLogout = function () {
   localStorage.removeItem('userPermanentAddress');
   updateAuthUI();
   alert('ออกจากระบบสำเร็จ');
+
+  if (window.location.hash === '#dashboard' && typeof renderDashboard === 'function') {
+    renderDashboard();
+  }
 };
 
 function updateAuthUI() {
@@ -696,20 +853,7 @@ window.renderDashboard = function () {
   });
 };
 
-// Auth handlers refresh dashboard after login/logout
-(function() {
-  const _origLogin = window.handleLogin;
-  window.handleLogin = function (e) {
-    _origLogin(e);
-    if (window.location.hash === '#dashboard') renderDashboard();
-  };
-
-  const _origLogout = window.handleLogout;
-  window.handleLogout = function () {
-    _origLogout();
-    if (window.location.hash === '#dashboard') renderDashboard();
-  };
-})();
+// Auth handlers refresh handled inside handleLogin/handleLogout directly
 
 // Mobile Menu Logic
 window.toggleMobileMenu = function () {
@@ -1309,3 +1453,157 @@ function escapeHtml(str) {
     checkBadge();
   }
 })();
+
+// ============================================
+// Sale Bikes Management & Presentation Logic
+// ============================================
+
+function renderFeaturedSaleCars() {
+  const grid = document.getElementById('featured-sales-grid');
+  if (!grid) return;
+
+  const featured = currentSaleFleet.filter(b => b.isFeatured !== false);
+  const displayItems = (featured.length > 0 ? featured : currentSaleFleet).slice(0, 3);
+
+  if (displayItems.length === 0) {
+    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">ยังไม่มีรายการรถขายแนะนำในขณะนี้</div>`;
+    return;
+  }
+
+  grid.innerHTML = displayItems.map(bike => createSaleCardHTML(bike)).join('');
+}
+
+function renderSaleFleet() {
+  const grid = document.getElementById('sale-cars-grid');
+  const countEl = document.getElementById('sale-count-num');
+  if (!grid) return;
+
+  if (countEl) countEl.textContent = currentSaleFleet.length;
+
+  if (currentSaleFleet.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem; background: var(--bg-white); border-radius: 16px; border: 2px dashed #e2e8f0;">
+        <i class="fa-solid fa-motorcycle fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
+        <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">ยังไม่มีรายการรถขายในขณะนี้</h3>
+        <p style="color: var(--text-secondary); margin: 0;">กรุณากลับมาตรวจสอบใหม่อีกครั้ง หรือติดต่อสอบถามแอดมิน</p>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = currentSaleFleet.map(bike => createSaleCardHTML(bike)).join('');
+}
+
+function createSaleCardHTML(bike) {
+  const images = (bike.images && Array.isArray(bike.images) && bike.images.length > 0)
+    ? bike.images
+    : [bike.image || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800'];
+  const mainImg = images[0];
+  const cashPrice = parseInt(bike.priceCash || 0).toLocaleString();
+  const downPayment = parseInt(bike.downPayment || 0).toLocaleString();
+  const downText = parseInt(bike.downPayment || 0) === 0 ? 'ฟรีดาวน์' : `ดาวน์ ฿${downPayment}`;
+  const detailsSnippet = (bike.details || '').length > 75 ? (bike.details.substring(0, 75) + '...') : (bike.details || '');
+
+  return `
+    <div class="sale-card" onclick="openSaleDetailModal('${bike.id}')">
+      <div class="sale-img-wrapper">
+        <span class="sale-badge"><i class="fa-solid fa-circle-check"></i> พร้อมส่งมอบ</span>
+        <img src="${mainImg}" alt="${escapeHtml(bike.name)}" class="sale-img" onerror="this.src='https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800'">
+        ${images.length > 1 ? `<span class="sale-img-count"><i class="fa-solid fa-images"></i> ${images.length} รูป</span>` : ''}
+      </div>
+      <div class="sale-info">
+        <h3 class="sale-name">${escapeHtml(bike.name)}</h3>
+        <div class="sale-pricing">
+          <div class="sale-price-cash">
+            <span class="price-label">สด</span>
+            <span class="price-val">฿${cashPrice}</span>
+          </div>
+          <div class="sale-price-installment">
+            <span class="down-badge">${downText}</span>
+            <span class="inst-val"><i class="fa-solid fa-clock-rotate-left" style="font-size: 0.7rem;"></i> ${escapeHtml(bike.installment || 'ผ่อนสบายๆ')}</span>
+          </div>
+        </div>
+        <div class="sale-details-snippet">${escapeHtml(detailsSnippet)}</div>
+        <button class="btn btn-primary sale-btn" onclick="event.stopPropagation(); openSaleDetailModal('${bike.id}')">
+          <i class="fa-solid fa-magnifying-glass-plus"></i> ดูรายละเอียดรถ
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+window.openSaleDetailModal = function(saleId) {
+  const bike = currentSaleFleet.find(b => String(b.id) === String(saleId));
+  if (!bike) return;
+
+  currentSaleDetailBike = bike;
+
+  const images = (bike.images && Array.isArray(bike.images) && bike.images.length > 0)
+    ? bike.images
+    : [bike.image || 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800'];
+
+  const mainImgEl = document.getElementById('sale-modal-main-img');
+  const counterEl = document.getElementById('sale-modal-img-counter');
+  const thumbsContainer = document.getElementById('sale-modal-thumbs');
+  const titleEl = document.getElementById('sale-modal-title');
+  const cashEl = document.getElementById('sale-modal-price-cash');
+  const downEl = document.getElementById('sale-modal-down-payment');
+  const instEl = document.getElementById('sale-modal-installment');
+  const detailsEl = document.getElementById('sale-modal-details');
+
+  if (mainImgEl) mainImgEl.src = images[0];
+  if (counterEl) counterEl.textContent = `1 / ${images.length}`;
+  if (titleEl) titleEl.textContent = bike.name;
+  if (cashEl) cashEl.textContent = `฿${parseInt(bike.priceCash || 0).toLocaleString()}`;
+  if (downEl) downEl.textContent = parseInt(bike.downPayment || 0) === 0 ? 'ฟรีดาวน์ (0 บาท)' : `฿${parseInt(bike.downPayment || 0).toLocaleString()}`;
+  if (instEl) instEl.textContent = bike.installment || '-';
+  if (detailsEl) detailsEl.textContent = bike.details || 'ไม่มีรายละเอียดเพิ่มเติม';
+
+  // Render Thumbnails
+  if (thumbsContainer) {
+    if (images.length > 1) {
+      thumbsContainer.style.display = 'flex';
+      thumbsContainer.innerHTML = images.map((img, idx) => `
+        <img src="${img}" class="sale-thumb ${idx === 0 ? 'active' : ''}" 
+             onclick="selectSaleImage('${img}', this, ${idx + 1}, ${images.length})"
+             alt="Thumbnail ${idx + 1}"
+             onerror="this.src='https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&q=80&w=800'">
+      `).join('');
+    } else {
+      thumbsContainer.style.display = 'none';
+      thumbsContainer.innerHTML = '';
+    }
+  }
+
+  toggleModal('saleDetailModal');
+};
+
+window.selectSaleImage = function(imgUrl, thumbEl, currentIdx, total) {
+  const mainImgEl = document.getElementById('sale-modal-main-img');
+  const counterEl = document.getElementById('sale-modal-img-counter');
+  if (mainImgEl) {
+    mainImgEl.style.opacity = '0.3';
+    setTimeout(() => {
+      mainImgEl.src = imgUrl;
+      mainImgEl.style.opacity = '1';
+    }, 150);
+  }
+  if (counterEl) counterEl.textContent = `${currentIdx} / ${total}`;
+
+  document.querySelectorAll('.sale-thumb').forEach(t => t.classList.remove('active'));
+  if (thumbEl) thumbEl.classList.add('active');
+};
+
+window.contactAdminAboutSaleBike = function() {
+  if (!currentSaleDetailBike) return;
+  toggleModal('saleDetailModal');
+  
+  // Open live chat with pre-filled message
+  toggleChatWidget();
+  const inputEl = document.getElementById('chat-input');
+  if (inputEl) {
+    inputEl.value = `สวัสดีครับ สนใจสอบถามรถขายรุ่น: ${currentSaleDetailBike.name} (ราคาสด ฿${parseInt(currentSaleDetailBike.priceCash || 0).toLocaleString()})`;
+    inputEl.focus();
+  }
+};
+

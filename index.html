@@ -28,6 +28,7 @@
                 <nav class="nav-links">
                     <a href="#home" class="active" onclick="closeMobileMenu()">หน้าแรก</a>
                     <a href="#fleet" onclick="closeMobileMenu()">เลือกรถเช่า</a>
+                    <a href="#sales" onclick="closeMobileMenu()">ขายรถ</a>
                     <a href="#dashboard" onclick="closeMobileMenu()">ตรวจสอบการจอง</a>
                     <a href="#contact" onclick="closeMobileMenu()">ติดต่อเรา</a>
                 </nav>
@@ -109,6 +110,28 @@
                 </div>
             </div>
 
+            <!-- Featured Sale Bikes Section -->
+            <div style="background: #f8fafc; padding: 4.5rem 1.5rem; border-top: 1px solid #edf2f7; border-bottom: 1px solid #edf2f7;">
+                <div class="container">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2.5rem; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <div style="display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(245, 158, 11, 0.15); color: #d97706; padding: 0.3rem 0.85rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                <i class="fa-solid fa-bolt"></i> คัดเกรดพรีเมียม สด-ผ่อน
+                            </div>
+                            <h2 class="section-title" style="margin-bottom: 0.25rem;">รถขายแนะนำ</h2>
+                            <p style="color: var(--text-secondary); margin: 0;">รถมอเตอร์ไซค์คุณภาพดี สภาพสวยพร้อมใช้งาน ผ่อนสบายๆ หรือซื้อสดในราคาสุดคุ้ม</p>
+                        </div>
+                        <button class="btn btn-outline" onclick="navigate('sales')" style="font-weight: 600;">
+                            ดูรถขายทั้งหมด <i class="fa-solid fa-arrow-right" style="margin-left: 0.35rem;"></i>
+                        </button>
+                    </div>
+
+                    <div class="sale-grid" id="featured-sales-grid">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+            </div>
+
             <!-- Why Us Section -->
             <div style="background-color: white; padding: 5rem 1.5rem;">
                 <div class="container">
@@ -167,6 +190,37 @@
                         </div>
                     </main>
 
+                </div>
+            </div>
+        </section>
+
+        <!-- View: Bike Sales (ขายรถ) -->
+        <section id="sales" class="view">
+            <div class="sale-hero-banner" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 3.5rem 1.5rem; text-align: center; position: relative;">
+                <div class="container" style="max-width: 800px;">
+                    <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.35rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; margin-bottom: 1rem;">
+                        <i class="fa-solid fa-motorcycle"></i> บริการขายรถมอเตอร์ไซค์และรถยนต์
+                    </span>
+                    <h1 class="hero-title" style="font-size: 2.5rem; margin-bottom: 0.75rem; color: white;">ศูนย์รวมรถคุณภาพพร้อมส่งมอบ</h1>
+                    <p class="hero-subtitle" style="font-size: 1.05rem; opacity: 0.85; margin: 0;">
+                        รถมือหนึ่งและมือสองคัดเกรดพิเศษ ราคาเงินสดสุดคุ้ม หรือเลือกผ่อนสบายๆ ดาวน์น้อย อนุมัติไว
+                    </p>
+                </div>
+            </div>
+
+            <div class="container" style="padding: 2.5rem 1.5rem 4rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.75rem; color: var(--text-primary);">รายการรถขายทั้งหมด</h2>
+                        <p style="color: var(--text-secondary); margin: 0.25rem 0 0; font-size: 0.95rem;">เลือกดูคันที่ต้องการเพื่อดูรูปภาพเพิ่มเติม ราคาสด ผ่อน ดาวน์ และสอบถามแอดมิน</p>
+                    </div>
+                    <span id="sale-count-badge" class="badge-counter" style="background: #f1f5f9; color: var(--text-secondary); padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600;">
+                        พบรถ <span id="sale-count-num">0</span> คัน
+                    </span>
+                </div>
+
+                <div class="sale-grid" id="sale-cars-grid">
+                    <!-- Injected via JS -->
                 </div>
             </div>
         </section>
@@ -409,6 +463,7 @@
                     <ul>
                         <li><a href="#home">หน้าแรก</a></li>
                         <li><a href="#fleet">เช่ารถ</a></li>
+                        <li><a href="#sales">ขายรถ</a></li>
                         <li><a href="#dashboard">ตรวจสอบการจอง</a></li>
                         <li><a href="#contact">ติดต่อเรา</a></li>
                     </ul>
@@ -705,6 +760,83 @@
             <div class="receipt-actions">
                 <button class="btn btn-outline" onclick="closeReceiptModal()" style="flex:1;"><i class="fa-solid fa-xmark" style="margin-right:0.5rem;"></i> ปิด</button>
                 <button class="btn btn-primary" onclick="printReceipt()" style="flex:2;"><i class="fa-solid fa-print" style="margin-right:0.5rem;"></i> พิมพ์ใบเสร็จ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sale Bike Detail Modal -->
+    <div class="modal-overlay" id="saleDetailModal" onclick="if(event.target === this) toggleModal('saleDetailModal')">
+        <div class="modal sale-detail-modal" style="max-width: 680px; padding: 0; overflow: hidden; border-radius: 16px;">
+            <i class="fa-solid fa-xmark modal-close" onclick="toggleModal('saleDetailModal')" style="top: 1rem; right: 1rem; z-index: 10; background: rgba(0,0,0,0.5); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; backdrop-filter: blur(4px);"></i>
+            
+            <div class="sale-modal-content">
+                <!-- Gallery Section -->
+                <div class="sale-gallery">
+                    <div class="sale-gallery-main">
+                        <img id="sale-modal-main-img" src="" alt="Sale Bike">
+                        <span id="sale-modal-badge" class="sale-modal-badge">
+                            <i class="fa-solid fa-circle-check"></i> พร้อมส่งมอบ
+                        </span>
+                        <span id="sale-modal-img-counter" class="sale-modal-counter">1 / 1</span>
+                    </div>
+                    <div class="sale-gallery-thumbs" id="sale-modal-thumbs">
+                        <!-- Thumbnails injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Info Section -->
+                <div class="sale-modal-body" style="padding: 1.5rem;">
+                    <div style="margin-bottom: 1.25rem;">
+                        <h2 id="sale-modal-title" style="font-size: 1.6rem; margin: 0 0 0.5rem; color: var(--text-primary);">รุ่นรถ</h2>
+                        <span id="sale-modal-tag" style="background: rgba(25, 118, 210, 0.1); color: var(--primary); font-size: 0.8rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">
+                            <i class="fa-solid fa-shield-halved" style="margin-right: 0.3rem;"></i> ตรวจเช็คสภาพแล้ว
+                        </span>
+                    </div>
+
+                    <!-- Pricing Box Grid -->
+                    <div class="sale-pricing-grid">
+                        <div class="sale-price-box cash-box">
+                            <span class="box-label"><i class="fa-solid fa-money-bill-wave"></i> ราคาสด</span>
+                            <span class="box-val" id="sale-modal-price-cash">฿0</span>
+                        </div>
+                        <div class="sale-price-box down-box">
+                            <span class="box-label"><i class="fa-solid fa-hand-holding-dollar"></i> เงินดาวน์</span>
+                            <span class="box-val" id="sale-modal-down-payment">฿0</span>
+                        </div>
+                        <div class="sale-price-box installment-box">
+                            <span class="box-label"><i class="fa-solid fa-calendar-days"></i> ค่างวดผ่อน</span>
+                            <span class="box-val" id="sale-modal-installment">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Details Box -->
+                    <div style="margin-top: 1.25rem;">
+                        <h4 style="font-size: 1rem; margin: 0 0 0.5rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> รายละเอียดรถ
+                        </h4>
+                        <div id="sale-modal-details" class="sale-modal-details-text">
+                            -
+                        </div>
+                    </div>
+
+                    <!-- Contact Admin Action Area -->
+                    <div class="sale-modal-actions" style="margin-top: 1.75rem; border-top: 1px solid #e2e8f0; padding-top: 1.25rem;">
+                        <p style="text-align: center; color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 0.85rem;">
+                            สนใจรถคันนี้? ปรึกษาและสอบถามเงื่อนไขการออกรถกับแอดมินได้ทันที
+                        </p>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-primary" onclick="contactAdminAboutSaleBike()" style="flex: 2; padding: 0.85rem 1.25rem; font-size: 1rem; font-weight: 700; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 4px 14px rgba(25, 118, 210, 0.3);">
+                                <i class="fa-solid fa-headset"></i> ติดต่อแอดมินสอบถามรถ
+                            </button>
+                            <a href="https://line.me/" target="_blank" class="btn btn-outline" style="flex: 1; padding: 0.85rem 1rem; border-color: #06c755; color: #06c755; font-weight: 600; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 0.4rem; text-decoration: none;">
+                                <i class="fa-brands fa-line" style="font-size: 1.2rem;"></i> LINE
+                            </a>
+                            <a href="tel:02-XXX-XXXX" class="btn btn-outline" style="padding: 0.85rem 1rem; border-radius: 10px; display: flex; align-items: center; justify-content: center;" title="โทรสอบถาม">
+                                <i class="fa-solid fa-phone"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
